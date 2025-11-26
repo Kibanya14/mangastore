@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+{% set base_shipping = shop_settings.shipping_cost or 0 %}
+{% set out_shipping = shop_settings.shipping_cost_out or base_shipping %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Finaliser la Commande</h1>
+    <p class="text-gray-600 mb-8">Remplissez vos informations pour compléter votre achat</p>
+
+    <form action="{{ url_for('checkout') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Informations Livraison -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Adresse de Livraison -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-truck text-purple-600"></i>
+                    <span>Adresse de Livraison</span>
+                </h3>
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                            <input type="text" name="first_name" value="{{ current_user.first_name or '' }}" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                            <input type="text" name="last_name" value="{{ current_user.last_name or '' }}" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" readonly>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                           <input type="email" name="email" value="{{ current_user.email or '' }}" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" readonly>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresse de Livraison</label>
+                        <textarea name="shipping_address" id="shipping_address" rows="3" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  placeholder="Entrez votre adresse complète de livraison">{{ current_user.address or '' }}</textarea>
+                        <input type="hidden" name="shipping_latitude" id="shipping_latitude">
+                        <input type="hidden" name="shipping_longitude" id="shipping_longitude">
+                        <input type="hidden" name="shipping_geocoded" id="shipping_geocoded">
+                        <p id="geo-status" class="mt-2 text-xs text-gray-500">Autorisez la géolocalisation et commencez à saisir pour voir des adresses proches.</p>
+                        <div id="address-suggestions" class="mt-2 hidden border border-gray-200 rounded-lg bg-white shadow-sm divide-y divide-gray-200"></div>
+                        <div id="geo-map-wrapper" class="mt-3 hidden">
+                            <iframe id="geo-map-frame" class="w-full h-48 rounded-lg border" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                        <input type="tel" name="phone" value="{{ current_user.phone or '' }}" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Votre numéro de téléphone">
+                        <p class="text-xs text-gray-500 mt-1">Obligatoire pour le paiement à la livraison</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Méthode de Livraison -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-shipping-fast text-blue-600"></i>
+                    <span>Méthode de Livraison</span>
+                </h3>
+                
+                <div class="space-y-3">
+                    <label class="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="shipping_method" value="standard" checked class="text-purple-600 focus:ring-purple-500">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Livraison Standard (centre-ville)</span>
+                                <span class="font-bold text-green-600">
+                                    {% if base_shipping %}{{ convert_price(base_shipping, from_currency=base_currency) }}{% else %}Gratuite{% endif %}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">Livraison sous 3-5 jours ouvrables</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="shipping_method" value="out_city" class="text-purple-600 focus:ring-purple-500">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Livraison hors centre-ville</span>
+                                <span class="font-bold text-gray-800">
+                                    {% if out_shipping %}{{ convert_price(out_shipping, from_currency=base_currency) }}{% else %}Gratuite{% endif %}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">Livraison sous 24-48 heures</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-sticky-note text-orange-600"></i>
+                    <span>Notes de Commande (Optionnel)</span>
+                </h3>
+                <textarea name="order_notes" rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="Instructions spéciales pour la livraison, commentaires..."></textarea>
+            </div>
+        </div>
+
+        <!-- Récapitulatif Commande -->
+        <div class="space-y-6">
+            <!-- Panier -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Votre Commande</h3>
+                
+                <div class="space-y-4">
+                    {% for item in cart_items %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            {% set img = get_first_image_url(item.product) %}
+                            {% if img %}
+                            <img src="{{ img }}" alt="{{ item.product.name }}" class="h-12 w-12 object-cover rounded">
+                            {% else %}
+                            <div class="h-12 w-12 bg-purple-100 rounded flex items-center justify-center">
+                                <i class="fas fa-book text-purple-600"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="font-medium text-gray-800">{{ item.product.name }}</p>
+                                <p class="text-sm text-gray-600">Quantité: {{ item.quantity }}</p>
+                            </div>
+                        </div>
+                        <span class="font-semibold text-gray-800">{{ convert_price(item.product.price * item.quantity, from_currency=base_currency) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <hr class="my-4">
+
+                <div class="space-y-2">
+                    <div class="flex justify-between text-gray-600">
+                        <span>Sous-total</span>
+                        <span>{{ convert_price(total, from_currency=base_currency) }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>Livraison</span>
+                        <span id="shipping-cost" data-base-shipping="{{ base_shipping }}" data-out-shipping="{{ out_shipping }}" class="text-green-600">
+                            {% if base_shipping %}{{ convert_price(base_shipping, from_currency=base_currency) }}{% else %}Gratuite{% endif %}
+                        </span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>TVA</span>
+                        <span>Incluse</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="flex justify-between text-lg font-bold text-gray-800">
+                        <span>Total (hors livraison)</span>
+                        {% set conversion_rate = convert_amount(1, from_currency=base_currency, to_currency=current_currency or base_currency) %}
+                        <span id="order-total"
+                              data-base-total="{{ '%.2f' % total }}"
+                              data-base-shipping="{{ base_shipping }}"
+                              data-out-shipping="{{ out_shipping }}"
+                              data-rate="{{ '%.6f' % conversion_rate }}">{{ convert_price(total, from_currency=base_currency) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paiement -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Méthode de Paiement</h3>
+                
+                <!-- Avertissement sur les méthodes de paiement -->
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start space-x-2">
+                        <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm text-blue-800 font-medium">Disponibilité des paiements</p>
+                            <p class="text-xs text-blue-700 mt-1">
+                                Actuellement, seule la méthode de paiement à la livraison est disponible. 
+                                Les autres moyens de paiement seront bientôt activés.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <!-- Méthodes désactivées -->
+                    <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg bg-gray-50 opacity-60 cursor-not-allowed">
+                        <input type="radio" name="payment_method" value="card" disabled class="text-gray-400">
+                        <i class="fas fa-credit-card text-gray-400"></i>
+                        <span class="font-medium text-gray-500">Carte de Crédit</span>
+                        <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Bientôt</span>
+                    </div>
+
+                    <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg bg-gray-50 opacity-60 cursor-not-allowed">
+                        <input type="radio" name="payment_method" value="paypal" disabled class="text-gray-400">
+                        <i class="fab fa-paypal text-gray-400"></i>
+                        <span class="font-medium text-gray-500">PayPal</span>
+                        <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Bientôt</span>
+                    </div>
+
+                    <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg bg-gray-50 opacity-60 cursor-not-allowed">
+                        <input type="radio" name="payment_method" value="transfer" disabled class="text-gray-400">
+                        <i class="fas fa-university text-gray-400"></i>
+                        <span class="font-medium text-gray-500">Virement Bancaire</span>
+                        <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Bientôt</span>
+                    </div>
+
+                    <!-- Paiement à la livraison - SEULE MÉTHODE ACTIVE -->
+                    <label class="flex items-center space-x-3 p-3 border-2 border-purple-500 rounded-lg cursor-pointer hover:bg-purple-50 bg-purple-25 transition">
+                        <input type="radio" name="payment_method" value="cash_on_delivery" checked class="text-purple-600 focus:ring-purple-500">
+                        <i class="fas fa-money-bill-wave text-purple-600 text-lg"></i>
+                        <div class="flex-1">
+                            <span class="font-medium text-gray-800">Paiement à la Livraison</span>
+                            <p class="text-sm text-gray-600 mt-1">Payez en espèces lors de la réception</p>
+                        </div>
+                    </label>
+
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 transition duration-300 flex items-center justify-center space-x-2">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Valider la commande</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Calcul dynamique du total avec livraison standard / hors centre-ville
+    (function(){
+        const totalElement = document.getElementById('order-total');
+        const shippingCostElement = document.getElementById('shipping-cost');
+        if (!totalElement || !shippingCostElement) return;
+        const baseTotal = parseFloat(totalElement.dataset.baseTotal) || 0;
+        const baseShipping = parseFloat(totalElement.dataset.baseShipping) || 0;
+        const outShipping = parseFloat(totalElement.dataset.outShipping) || 0;
+        const rate = parseFloat(totalElement.dataset.rate) || 1;
+        const currency = "{{ current_currency or base_currency }}";
+
+        function updateTotal(shippingValue){
+            if (shippingValue === 'out_city') {
+                totalElement.textContent = currency + ' ' + (baseTotal * rate).toFixed(2);
+                shippingCostElement.textContent = outShipping ? currency + ' ' + (outShipping * rate).toFixed(2) : 'Gratuite';
+                shippingCostElement.className = outShipping ? 'font-bold text-gray-800' : 'text-green-600';
+            } else {
+                totalElement.textContent = currency + ' ' + (baseTotal * rate).toFixed(2);
+                shippingCostElement.textContent = baseShipping ? currency + ' ' + (baseShipping * rate).toFixed(2) : 'Gratuite';
+                shippingCostElement.className = baseShipping ? 'font-bold text-gray-800' : 'text-green-600';
+            }
+        }
+
+        const shippingRadios = document.querySelectorAll('input[name="shipping_method"]');
+        shippingRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => updateTotal(e.target.value));
+            if (radio.checked) updateTotal(radio.value);
+        });
+    })();
+
+    // Géolocalisation côté client
+    (function() {
+        const latInput = document.getElementById('shipping_latitude');
+        const lonInput = document.getElementById('shipping_longitude');
+        const labelInput = document.getElementById('shipping_geocoded');
+        const statusEl = document.getElementById('geo-status');
+        const mapWrapper = document.getElementById('geo-map-wrapper');
+        const mapFrame = document.getElementById('geo-map-frame');
+        const addressField = document.getElementById('shipping_address');
+        const suggestionsEl = document.getElementById('address-suggestions');
+
+        if (!latInput || !lonInput || !addressField) return;
+
+        let userPosition = null;
+        let debounceTimer = null;
+        let controller = null;
+
+        function setStatus(msg, isError=false) {
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.className = `mt-2 text-xs ${isError ? 'text-red-600' : 'text-gray-600'}`;
+        }
+
+        function clearSuggestions() {
+            if (!suggestionsEl) return;
+            suggestionsEl.innerHTML = '';
+            suggestionsEl.classList.add('hidden');
+        }
+
+        function setCoords(lat, lon, label) {
+            latInput.value = lat;
+            lonInput.value = lon;
+            if (labelInput) labelInput.value = label || '';
+            if (mapFrame) {
+                mapFrame.src = `https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+                mapWrapper?.classList.remove('hidden');
+            }
+            if (label) setStatus('Adresse localisée. Merci !');
+        }
+
+        async function fetchSuggestions(query) {
+            if (!suggestionsEl) return;
+            if (controller) controller.abort();
+            controller = new AbortController();
+            const params = new URLSearchParams({
+                q: query,
+                format: 'json',
+                addressdetails: '1',
+                limit: '5',
+                'accept-language': 'fr'
+            });
+            if (userPosition) {
+                params.set('lat', userPosition.lat);
+                params.set('lon', userPosition.lon);
+            }
+            try {
+                setStatus('Recherche d\'adresses proches...');
+                const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+                    signal: controller.signal,
+                    headers: { 'Accept-Language': 'fr' }
+                });
+                if (!resp.ok) throw new Error('search_failed');
+                const results = await resp.json();
+                suggestionsEl.innerHTML = '';
+                if (!results.length) {
+                    clearSuggestions();
+                    setStatus('Aucune suggestion trouvée. Continuez à saisir votre adresse.');
+                    return;
+                }
+                results.forEach((item) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-purple-50 focus:bg-purple-100 focus:outline-none';
+                    btn.textContent = item.display_name;
+                    btn.addEventListener('click', () => {
+                        const lat = Number.parseFloat(item.lat).toFixed(6);
+                        const lon = Number.parseFloat(item.lon).toFixed(6);
+                        addressField.value = item.display_name;
+                        setCoords(lat, lon, item.display_name);
+                        clearSuggestions();
+                    });
+                    suggestionsEl.appendChild(btn);
+                });
+                suggestionsEl.classList.remove('hidden');
+                setStatus('Choisissez une adresse dans la liste proposée.');
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                clearSuggestions();
+                setStatus('Impossible de récupérer les suggestions d\'adresse pour le moment.', true);
+            }
+        }
+
+        function handleInput(event) {
+            const query = event.target.value.trim();
+            if (query.length < 3) {
+                clearSuggestions();
+                setStatus('Ajoutez quelques caractères pour voir des suggestions.');
+                return;
+            }
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchSuggestions(query), 400);
+        }
+
+        function bootstrapGeolocation() {
+            if (!navigator.geolocation) {
+                setStatus('La géolocalisation n\'est pas supportée par ce navigateur.', true);
+                return;
+            }
+            setStatus('Autorisez la géolocalisation pour affiner les suggestions.');
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    userPosition = {
+                        lat: Number.parseFloat(pos.coords.latitude).toFixed(6),
+                        lon: Number.parseFloat(pos.coords.longitude).toFixed(6)
+                    };
+                    setStatus('Zone localisée. Commencez à saisir votre adresse.');
+                },
+                () => setStatus('Géolocalisation refusée. Les suggestions seront générales.', true),
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+            );
+        }
+
+        addressField.addEventListener('input', handleInput);
+        addressField.addEventListener('focus', () => {
+            if (!userPosition) bootstrapGeolocation();
+        });
+        bootstrapGeolocation();
+    })();
+
+</script>
+{% endblock %}

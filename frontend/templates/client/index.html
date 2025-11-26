@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="gradient-bg text-white py-20">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+        <h1 class="text-5xl font-bold mb-6 animate-pulse">
+            Bienvenue au {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
+        </h1>
+        <p class="text-xl mb-8 opacity-90">
+            Découvrez notre collection exclusive de mangas et produits dérivés
+        </p>
+        <a href="{{ url_for('products') }}" 
+           class="bg-white text-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition duration-300 inline-flex items-center space-x-2">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Explorer la Boutique</span>
+        </a>
+    </div>
+</section>
+
+<!-- Catégories -->
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">Nos Catégories</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {% for category in categories %}
+            <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
+               class="bg-gray-50 rounded-xl p-6 text-center hover-scale shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl">
+                {% if category.image %}
+                <img src="{{ url_for('static', filename='uploads/categories/' + category.image) }}" 
+                     alt="{{ category.name }}" class="h-16 w-16 mx-auto mb-4 rounded-lg">
+                {% else %}
+                <div class="h-16 w-16 mx-auto mb-4 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-book text-purple-600 text-2xl"></i>
+                </div>
+                {% endif %}
+                <h3 class="font-semibold text-gray-800 mb-2">{{ category.name }}</h3>
+                <p class="text-sm text-gray-600">{{ category.description[:50] }}...</p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Produits Populaires -->
+<section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-800">Nouveaux Produits</h2>
+            <a href="{{ url_for('products') }}" class="text-purple-600 hover:text-purple-700 font-semibold flex items-center space-x-2">
+                <span>Voir tout</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {% for product in products %}
+            <div class="bg-white rounded-xl shadow-md overflow-hidden hover-scale border border-gray-200">
+                <!-- Image du produit -->
+                <div class="h-48 bg-gray-200 relative overflow-hidden">
+                    {% set img = get_first_image_url(product) %}
+                    {% if img %}
+                    <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-purple-100">
+                        <i class="fas fa-book text-purple-400 text-4xl"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Badge Stock -->
+                    <div class="absolute top-3 right-3">
+                        {% if product.quantity > 0 %}
+                        <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            En stock
+                        </span>
+                        {% else %}
+                        <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            Rupture
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Infos produit -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-lg text-gray-800 mb-2">{{ product.name }}</h3>
+                    <p class="text-gray-600 text-sm mb-3">{{ product.description[:80] }}...</p>
+                    
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-bold text-purple-600">{{ convert_price(product.price, from_currency=base_currency) }}</span>
+                            {% if product.compare_price %}
+                            <span class="text-sm text-gray-500 line-through">{{ convert_price(product.compare_price, from_currency=base_currency) }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            Stock: {{ product.quantity }}
+                        </span>
+                    </div>
+
+                    <!-- Actions -->
+                    {% if current_user.is_authenticated and product.quantity > 0 %}
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex items-center space-x-2">
+                            <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" 
+                                   class="w-16 px-2 py-1 border border-gray-300 rounded text-center">
+                            <button type="submit" 
+                                    class="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center space-x-2">
+                                <i class="fas fa-cart-plus"></i>
+                                <span>Panier</span>
+                            </button>
+                        </div>
+                    </form>
+                    {% elif not current_user.is_authenticated %}
+                    <a href="{{ url_for('client_login') }}" 
+                       class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center">
+                        Connectez-vous pour acheter
+                    </a>
+                    {% else %}
+                    <button disabled 
+                            class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed">
+                        Rupture de stock
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="text-center">
+                <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-shipping-fast text-purple-600 text-2xl"></i>
+                </div>
+                <h3 class="font-semibold text-lg mb-2">Livraison Rapide</h3>
+                <p class="text-gray-600">Expédition sous 24h pour toute commande</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-shield-alt text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="font-semibold text-lg mb-2">Paiement Sécurisé</h3>
+                <p class="text-gray-600">Transactions 100% sécurisées</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-headset text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="font-semibold text-lg mb-2">Support 7j/7</h3>
+                <p class="text-gray-600">Notre équipe vous assiste</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

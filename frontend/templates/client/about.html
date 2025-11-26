@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}À propos - Manga Store{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-12 space-y-6">
+    <h1 class="text-3xl font-bold text-gray-900">À propos de Manga Store</h1>
+    <p class="text-gray-700 leading-relaxed">
+        Ici, "Manga" signifie <strong>Maniana Ngayo</strong>, le fondateur de Manga Store. Notre boutique est née pour simplifier l'accès aux produits culturels et inspirants, avec un soin particulier sur la livraison et le suivi des commandes.
+    </p>
+    <div class="bg-white rounded-xl shadow p-6 space-y-3">
+        <h2 class="text-xl font-semibold text-gray-800">Engagements</h2>
+        <ul class="list-disc list-inside text-gray-700 space-y-1">
+            <li>Transparence sur l'origine des produits.</li>
+            <li>Livraison suivie avec localisation issue de votre adresse.</li>
+            <li>Support réactif par l'équipe Maniana Ngayo.</li>
+        </ul>
+    </div>
+    <p class="text-gray-600 text-sm">Besoin d'aide ? Contactez-nous à {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}.</p>
+</div>
+{% endblock %}

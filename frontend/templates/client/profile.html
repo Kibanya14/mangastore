@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Mon Profil - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Mon Profil</h1>
+    <p class="text-gray-600 mb-8">Gérez vos informations personnelles et vos préférences</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Navigation Profil -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 sticky top-4">
+                <div class="text-center mb-6">
+                    <div class="relative inline-block">
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                             alt="Photo de profil" 
+                             class="h-24 w-24 rounded-full border-4 border-purple-500 object-cover mx-auto">
+                        <button onclick="togglePhotoUpload()" 
+                                class="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 transition">
+                            <i class="fas fa-camera text-sm"></i>
+                        </button>
+                    </div>
+                    <h3 class="font-semibold text-gray-800 mt-3">{{ current_user.first_name }} {{ current_user.last_name }}</h3>
+                    <p class="text-gray-600 text-sm">{{ current_user.email }}</p>
+                </div>
+
+                <nav class="space-y-2">
+                    <a href="#personal-info" 
+                       class="flex items-center space-x-3 p-3 rounded-lg bg-purple-50 text-purple-600 font-medium">
+                        <i class="fas fa-user w-5 text-center"></i>
+                        <span>Informations Personnelles</span>
+                    </a>
+                    <a href="#orders" 
+                       class="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition">
+                        <i class="fas fa-shopping-bag w-5 text-center"></i>
+                        <span>Mes Commandes</span>
+                    </a>
+                    <a href="#security" 
+                       class="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition">
+                        <i class="fas fa-lock w-5 text-center"></i>
+                        <span>Sécurité</span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Contenu Principal -->
+        <div class="lg:col-span-3 space-y-6">
+            <!-- Upload Photo (Caché par défaut) -->
+            <div id="photoUpload" class="bg-white rounded-xl shadow-md p-6 border border-gray-200 hidden">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Changer la photo de profil</h3>
+                <form action="{{ url_for('update_profile_picture') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="flex items-center space-x-4">
+                        <input type="file" name="profile_picture" accept="image/*" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button type="submit" 
+                                class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                            Uploader
+                        </button>
+                        <button type="button" onclick="togglePhotoUpload()" 
+                                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                            Annuler
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500">Formats acceptés: JPG, PNG, GIF (max 5MB)</p>
+                </form>
+            </div>
+
+            <!-- Informations Personnelles -->
+            <div id="personal-info" class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center space-x-2">
+                    <i class="fas fa-user-circle text-purple-600"></i>
+                    <span>Informations Personnelles</span>
+                </h3>
+
+                <form action="{{ url_for('update_profile') }}" method="POST" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                            <input type="text" name="first_name" value="{{ current_user.first_name }}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                            <input type="text" name="last_name" value="{{ current_user.last_name }}" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" value="{{ current_user.email }}" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                        <p class="text-sm text-gray-500 mt-1">L'email ne peut pas être modifié</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                        <input type="tel" name="phone" value="{{ current_user.phone if current_user.phone }}" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Votre numéro de téléphone">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
+                        <textarea name="address" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  placeholder="Votre adresse complète" id="client_address_field">{{ current_user.address if current_user.address }}</textarea>
+                        <input type="hidden" id="client_address_lat">
+                        <input type="hidden" id="client_address_lon">
+                        <input type="hidden" id="client_address_label">
+                        <div class="mt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <button type="button"
+                                    class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 w-full md:w-auto justify-center"
+                                    data-geo-btn
+                                    data-geo-target="client_address_field"
+                                    data-geo-lat="client_address_lat"
+                                    data-geo-lon="client_address_lon"
+                                    data-geo-label="client_address_label"
+                                    data-geo-map="client_address_map"
+                                    data-geo-status="client_address_status">
+                                <i class="fas fa-location-crosshairs"></i>
+                                <span>Me géolocaliser</span>
+                            </button>
+                            <p id="client_address_status" class="text-xs text-gray-500">Utilisez votre position pour remplir l'adresse plus précisément.</p>
+                        </div>
+                        <div class="mt-3 hidden" id="client_address_map_wrapper">
+                            <iframe id="client_address_map" class="w-full h-48 rounded-lg border" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="reset" 
+                                class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                            Annuler
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2">
+                            <i class="fas fa-save"></i>
+                            <span>Sauvegarder</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Historique des Commandes -->
+            <div id="orders" class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center space-x-2">
+                    <i class="fas fa-history text-blue-600"></i>
+                    <span>Historique des Commandes</span>
+                </h3>
+
+                {% if current_user.orders %}
+                <div class="space-y-4">
+                    {% for order in current_user.orders|sort(attribute='created_at', reverse=true) %}
+                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="font-semibold text-gray-800">Commande #{{ order.order_number }}</h4>
+                                <p class="text-sm text-gray-600">Passée le {{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-gray-800">{{ convert_price(order.total_amount, from_currency=base_currency) }}</span>
+                                <div class="mt-1">
+                                    {% set status_badges = {
+                                        'pending': 'bg-yellow-100 text-yellow-800',
+                                        'confirmed': 'bg-blue-100 text-blue-800', 
+                                        'shipped': 'bg-purple-100 text-purple-800',
+                                        'delivered': 'bg-green-100 text-green-800',
+                                        'cancelled': 'bg-red-100 text-red-800'
+                                    } %}
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold {{ status_badges[order.status] }}">
+                                        {{ order.status|title }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-gray-600">
+                                {{ order.items|length }} article(s) • 
+                                <a href="{{ url_for('view_order', order_id=order.id) }}" 
+                                   class="text-purple-600 hover:text-purple-700">Voir les détails</a>
+                            </div>
+                            {% if order.status == 'delivered' %}
+                            <button class="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1">
+                                <i class="fas fa-redo"></i>
+                                <span>Commander à nouveau</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-shopping-bag text-4xl text-gray-300 mb-4"></i>
+                    <h4 class="text-lg font-medium text-gray-600">Aucune commande passée</h4>
+                    <p class="text-gray-500 mt-2">Vos commandes apparaîtront ici</p>
+                    <a href="{{ url_for('products') }}" 
+                       class="inline-block mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition">
+                        Découvrir nos produits
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sécurité -->
+            <div id="security" class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center space-x-2">
+                    <i class="fas fa-shield-alt text-green-600"></i>
+                    <span>Sécurité du Compte</span>
+                </h3>
+
+                <form action="{{ url_for('change_password') }}" method="POST" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                            <div class="relative">
+                                <input id="current_password" type="password" name="current_password" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10">
+                                <button type="button" id="toggleCurrentPassword" class="absolute right-2 top-2 text-gray-500">Afficher</button>
+                            </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                                <div class="relative">
+                                    <input id="new_password" type="password" name="new_password" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10">
+                                    <button type="button" id="toggleNewPassword" class="absolute right-2 top-2 text-gray-500">Afficher</button>
+                                </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                                <div class="relative">
+                                    <input id="confirm_password" type="password" name="confirm_password" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10">
+                                    <button type="button" id="toggleConfirmPassword" class="absolute right-2 top-2 text-gray-500">Afficher</button>
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex items-center space-x-2 text-yellow-800 mb-2">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span class="font-semibold">Conseils de sécurité</span>
+                        </div>
+                        <ul class="text-sm text-yellow-700 space-y-1">
+                            <li>• Utilisez au moins 8 caractères</li>
+                            <li>• Combinez lettres, chiffres et symboles</li>
+                            <li>• Évitez les mots de passe courants</li>
+                        </ul>
+                    </div>
+
+                    <div class="flex justify-end pt-4">
+                        <button type="submit" 
+                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                            <i class="fas fa-key"></i>
+                            <span>Changer le mot de passe</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePhotoUpload() {
+        const uploadSection = document.getElementById('photoUpload');
+        uploadSection.classList.toggle('hidden');
+    }
+
+    // Navigation fluide
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Validation mot de passe
+    const passwordForm = document.querySelector('form[action*="change_password"]');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            const newPassword = this.querySelector('input[name="new_password"]').value;
+            const confirmPassword = this.querySelector('input[name="confirm_password"]').value;
+            
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                alert('Les mots de passe ne correspondent pas');
+            }
+            
+            if (newPassword.length < 8) {
+                e.preventDefault();
+                alert('Le mot de passe doit contenir au moins 8 caractères');
+            }
+        });
+    }
+
+    // Toggles pour les champs mot de passe
+    function makeToggle(buttonId, inputId) {
+        const btn = document.getElementById(buttonId);
+        const inp = document.getElementById(inputId);
+        if (!btn || !inp) return;
+        btn.addEventListener('click', function() {
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                btn.textContent = 'Cacher';
+            } else {
+                inp.type = 'password';
+                btn.textContent = 'Afficher';
+            }
+        });
+    }
+
+    makeToggle('toggleCurrentPassword', 'current_password');
+    makeToggle('toggleNewPassword', 'new_password');
+    makeToggle('toggleConfirmPassword', 'confirm_password');
+</script>
+{% endblock %}

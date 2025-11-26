@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="{{ url_for('static', filename='uploads/logos/' + (shop_settings.admin_logo or shop_settings.shop_logo or 'default_logo.svg')) }}">
+    
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --sidebar: #1f2937;
+            --text: #111827;
+            --card: #ffffff;
+        }
+        .dark {
+            --bg: #0f172a;
+            --sidebar: #0b1020;
+            --text: #e5e7eb;
+            --card: #111827;
+        }
+        body { background: var(--bg); color: var(--text); }
+        .sidebar { transition: all 0.3s ease; background: var(--sidebar); }
+        .sidebar.collapsed { width: 70px; }
+        .sidebar.collapsed .sidebar-text { display: none; }
+        .main-content { transition: all 0.3s ease; height: 100vh; overflow-y: auto; }
+        .card-surface { background: var(--card); }
+        .currency-select { background: #fff; border-radius: 999px; padding: 6px 10px; }
+        .logo-round { height: 48px; width: 48px; border-radius: 999px; object-fit: cover; }
+        .toggle-btn { border: 1px solid #e5e7eb; border-radius: 999px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #111827; }
+    </style>
+</head>
+<body class="{% if session.get('theme') == 'dark' %}dark{% endif %}" data-theme="">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar text-white w-72 flex flex-col min-h-screen justify-between">
+            <!-- En-tête Sidebar -->
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    {% set admin_logo_file = shop_settings.admin_logo if shop_settings and shop_settings.admin_logo else (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else None) %}
+                    {% if admin_logo_file %}
+                    <img src="{{ url_for('static', filename='uploads/logos/' + admin_logo_file) }}" alt="Logo" class="logo-round">
+                    {% else %}
+                    <i class="fas fa-book text-purple-300 text-2xl"></i>
+                    {% endif %}
+                    <span class="font-bold text-lg sidebar-text">
+                        {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
+                    </span>
+                </div>
+                <button id="sidebarToggle" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Sidebar -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="{{ url_for('admin_dashboard') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_dashboard' %}bg-purple-600 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} transition">
+                    <i class="fas fa-tachometer-alt w-6 text-center"></i>
+                    <span class="sidebar-text">Tableau de Bord</span>
+                </a>
+
+                {% set can_view_products = current_user.has_permission('view_products') or current_user.is_super_admin %}
+                <a href="{{ url_for('admin_products') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_products' %}bg-purple-600 text-white{% else %}{% if can_view_products %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_products %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_view_products %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-boxes w-6 text-center"></i>
+                    <span class="sidebar-text">Produits{% if not can_view_products %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                {% set can_view_orders = current_user.has_permission('view_orders') or current_user.is_super_admin %}
+                <a href="{{ url_for('admin_orders') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_orders' %}bg-purple-600 text-white{% else %}{% if can_view_orders %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_orders %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_view_orders %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-shopping-cart w-6 text-center"></i>
+                    <span class="sidebar-text">Commandes{% if not can_view_orders %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                {% set can_manage_deliverers = current_user.has_permission('manage_deliverers') or current_user.is_super_admin %}
+                <a href="{{ url_for('admin_deliverers') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_deliverers' %}bg-purple-600 text-white{% else %}{% if can_manage_deliverers %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_manage_deliverers %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_manage_deliverers %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-truck w-6 text-center"></i>
+                    <span class="sidebar-text">Livreurs{% if not can_manage_deliverers %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                {% set can_view_clients = current_user.has_permission('view_orders') or current_user.is_super_admin %}
+                <a href="{{ url_for('admin_clients') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_clients' %}bg-purple-600 text-white{% else %}{% if can_view_clients %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_clients %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_view_clients %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-user-friends w-6 text-center"></i>
+                    <span class="sidebar-text">Clients{% if not can_view_clients %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                {% set can_view_categories = current_user.has_permission('view_categories') or current_user.is_super_admin %}
+                <a href="{{ url_for('admin_categories') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_categories' %}bg-purple-600 text-white{% else %}{% if can_view_categories %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_categories %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_view_categories %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-tags w-6 text-center"></i>
+                    <span class="sidebar-text">Catégories{% if not can_view_categories %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                {% set can_manage_admins = current_user.is_super_admin or current_user.has_permission('manage_admins') %}
+                <a href="{{ url_for('admin_manage_admins') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_manage_admins' %}bg-purple-600 text-white{% else %}{% if can_manage_admins %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_manage_admins %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_manage_admins %}aria-disabled="true" title="Accès réservé au super-admin"{% endif %}>
+                    <i class="fas fa-users-cog w-6 text-center"></i>
+                    <span class="sidebar-text">Administrateurs{% if not can_manage_admins %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                <a href="{{ url_for('forum') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'forum' %}bg-purple-600 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} transition">
+                    <i class="fas fa-comments w-6 text-center"></i>
+                    <span class="sidebar-text">Forum</span>
+                </a>
+
+                {% if current_user.is_super_admin %}
+                <a href="{{ url_for('admin_access_requests') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_access_requests' %}bg-purple-600 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} transition">
+                    <i class="fas fa-envelope-open-text w-6 text-center"></i>
+                    <span class="sidebar-text">Demandes d'accès {% if access_request_count and access_request_count > 0 %}<span class="ml-2 inline-block text-xs bg-yellow-100 text-yellow-800 px-2 rounded">{{ access_request_count }}</span>{% endif %}</span>
+                </a>
+                {% endif %}
+
+                {% set can_access_settings = current_user.is_super_admin or current_user.has_permission('manage_settings') %}
+                <a href="{{ url_for('admin_settings') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_settings' %}bg-purple-600 text-white{% else %}{% if can_access_settings %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_access_settings %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_access_settings %}aria-disabled="true" title="Accès réservé au super-admin"{% endif %}>
+                    <i class="fas fa-cog w-6 text-center"></i>
+                    <span class="sidebar-text">Paramètres{% if not can_access_settings %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
+                <a href="{{ url_for('index') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition border-t border-gray-700 mt-4">
+                    <i class="fas fa-store w-6 text-center"></i>
+                    <span class="sidebar-text">Voir la Boutique</span>
+                </a>
+
+                <a href="{{ url_for('admin_logout') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg text-red-400 hover:bg-red-900 hover:text-red-300 transition">
+                    <i class="fas fa-sign-out-alt w-6 text-center"></i>
+                    <span class="sidebar-text">Déconnexion</span>
+                </a>
+            </nav>
+            <!-- Legal / footer info in sidebar -->
+            <div class="p-4 border-t border-gray-700 text-xs text-gray-300 leading-relaxed break-words whitespace-normal">
+                <p>© 2025 Manga Store Administration.</p>
+                <p>Propulsé par Esperdigi. Tous droits réservés.</p>
+            </div>
+        </div>
+
+        <!-- Contenu Principal -->
+        <div class="main-content flex-1 flex flex-col overflow-hidden">
+            <!-- En-tête -->
+            <header class="bg-white card-surface shadow-sm border-b border-gray-200">
+                <div class="flex items-center justify-between p-4">
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-2xl font-bold" style="color:var(--text);">{% block header_title %}Administration{% endblock %}</h1>
+                        <form action="{{ url_for('set_currency') }}" method="POST" class="currency-select hidden md:flex items-center gap-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <i class="fas fa-coins text-yellow-500"></i>
+                            <select name="currency" onchange="this.form.submit()" class="bg-transparent focus:outline-none text-sm">
+                                {% for cur in available_currencies %}
+                                    <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-gray-600">Bonjour, {{ current_user.first_name }}!</span>
+                        <div class="relative group">
+                            <button type="button" class="h-10 w-10 rounded-full border border-purple-200 overflow-hidden flex items-center justify-center bg-gray-50">
+                                {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
+                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                                {% else %}
+                                <i class="fas fa-user text-gray-500"></i>
+                                {% endif %}
+                            </button>
+                            <div class="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-20">
+                                <a href="{{ url_for('admin_profile') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition">
+                                    <i class="fas fa-user-circle mr-2 text-purple-500"></i> Profil
+                                </a>
+                                <a href="{{ url_for('admin_about') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition">
+                                    <i class="fas fa-circle-info mr-2 text-purple-500"></i> À propos
+                                </a>
+                                <div class="border-t"></div>
+                                <a href="{{ url_for('admin_logout') }}" class="flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                                </a>
+                            </div>
+                        </div>
+                        {% if current_user.is_super_admin %}
+                        <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-semibold">
+                            Super Admin
+                        </span>
+                        {% else %}
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                            Admin
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </header>
+
+            <!-- Messages Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="p-4 space-y-2">
+                        {% for category, message in messages %}
+                        <div class="p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700 border border-red-300{% else %}bg-green-100 text-green-700 border border-green-300{% endif %} flash-message">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas {% if category == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                                    <span>{{ message }}</span>
+                                </div>
+                                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Contenu -->
+            <main class="flex-1 overflow-y-auto p-6">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Sidebar
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                mainContent.style.marginLeft = '70px';
+            } else {
+                mainContent.style.marginLeft = '0';
+            }
+        });
+
+        // Auto-suppression des messages flash
+        setTimeout(() => {
+            const flashes = document.querySelectorAll('.flash-message');
+            flashes.forEach(flash => {
+                flash.style.transition = 'opacity 0.5s ease';
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 500);
+            });
+        }, 5000);
+
+        // Thème sombre/clair
+        // Thème : aucune bascule (bouton supprimé), mais on laisse la classe si déjà stockée
+        try {
+            const saved = localStorage.getItem('manga-theme');
+            if (saved === 'dark') document.body.classList.add('dark');
+        } catch(e) {}
+
+        // Géolocalisation (boutons avec data-geo-btn)
+        function initGeoWidgets() {
+            document.querySelectorAll('[data-geo-btn]').forEach(btn => {
+                if (btn.dataset.geoBound) return;
+                btn.dataset.geoBound = '1';
+                const target = document.getElementById(btn.dataset.geoTarget);
+                const latEl = document.getElementById(btn.dataset.geoLat);
+                const lonEl = document.getElementById(btn.dataset.geoLon);
+                const labelEl = document.getElementById(btn.dataset.geoLabel);
+                const statusEl = document.getElementById(btn.dataset.geoStatus);
+                const mapFrame = document.getElementById(btn.dataset.geoMap);
+                const mapWrapper = mapFrame ? mapFrame.parentElement : null;
+
+                const setStatus = (msg, isError=false) => {
+                    if (!statusEl) return;
+                    statusEl.textContent = msg;
+                    statusEl.className = `text-xs ${isError ? 'text-red-600' : 'text-gray-600'}`;
+                };
+
+                const setCoords = (lat, lon, label='') => {
+                    if (latEl) latEl.value = lat;
+                    if (lonEl) lonEl.value = lon;
+                    if (labelEl) labelEl.value = label || (target ? target.value : '');
+                    if (mapFrame) {
+                        mapFrame.src = `https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+                        mapWrapper && mapWrapper.classList.remove('hidden');
+                    }
+                    setStatus('Position détectée.');
+                };
+
+                btn.addEventListener('click', () => {
+                    if (!navigator.geolocation) {
+                        setStatus('La géolocalisation n’est pas supportée.', true);
+                        return;
+                    }
+                    setStatus('Recherche de votre position...');
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const { latitude, longitude } = pos.coords;
+                            setCoords(latitude.toFixed(6), longitude.toFixed(6));
+                        },
+                        () => setStatus('Impossible de récupérer votre position.', true),
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+                    );
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', initGeoWidgets);
+
+        // Ajout automatique d'icônes Font Awesome sur boutons, entêtes et labels
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnMap = [
+                { keys: ['ajouter','add','nouveau','créer','create'], icon: 'fa-plus' },
+                { keys: ['modifier','edit'], icon: 'fa-pen' },
+                { keys: ['supprimer','delete'], icon: 'fa-trash' },
+                { keys: ['enregistrer','sauver','save'], icon: 'fa-save' },
+                { keys: ['valider','submit','appliquer'], icon: 'fa-check-circle' },
+                { keys: ['assigner','affecter'], icon: 'fa-share-square' },
+                { keys: ['payer','payée','payé','payout'], icon: 'fa-money-bill-wave' },
+                { keys: ['facture','invoice','pdf'], icon: 'fa-file-pdf' },
+                { keys: ['filtrer','filter'], icon: 'fa-filter' },
+                { keys: ['rechercher','search'], icon: 'fa-search' },
+                { keys: ['connexion','login'], icon: 'fa-sign-in-alt' },
+                { keys: ['déconnexion','logout'], icon: 'fa-sign-out-alt' }
+            ];
+
+            const thMap = [
+                { keys: ['commande','order'], icon: 'fa-receipt' },
+                { keys: ['client','user'], icon: 'fa-user' },
+                { keys: ['montant','prix','total'], icon: 'fa-coins' },
+                { keys: ['statut','status'], icon: 'fa-info-circle' },
+                { keys: ['date'], icon: 'fa-clock' },
+                { keys: ['localisation','adresse'], icon: 'fa-location-dot' },
+                { keys: ['actions'], icon: 'fa-ellipsis-h' },
+                { keys: ['livreur','delivery'], icon: 'fa-truck' },
+                { keys: ['commission'], icon: 'fa-piggy-bank' }
+            ];
+
+            const labelMap = [
+                { keys: ['nom','name'], icon: 'fa-id-badge' },
+                { keys: ['prénom'], icon: 'fa-user' },
+                { keys: ['email','e-mail'], icon: 'fa-envelope' },
+                { keys: ['téléphone','phone'], icon: 'fa-phone' },
+                { keys: ['adresse'], icon: 'fa-map-marker-alt' },
+                { keys: ['mot de passe','password'], icon: 'fa-lock' },
+                { keys: ['statut','status'], icon: 'fa-info-circle' },
+                { keys: ['note'], icon: 'fa-sticky-note' }
+            ];
+
+            const matchIcon = (text, map) => {
+                const lower = (text || '').toLowerCase();
+                for (const m of map) {
+                    if (m.keys.some(k => lower.includes(k))) return m.icon;
+                }
+                return null;
+            };
+
+            const addIcon = (el, icon, pos='prepend') => {
+                if (!icon || el.dataset.iconApplied) return;
+                const hasExisting = el.querySelector('i.fas, i.fa-solid, i.fa, svg');
+                if (hasExisting) return;
+                if (el.querySelector('img')) return;
+                const i = document.createElement('i');
+                i.className = `fas ${icon} mr-2 text-gray-600`;
+                if (pos === 'append') {
+                    el.appendChild(i);
+                } else {
+                    el.prepend(i);
+                }
+                el.dataset.iconApplied = '1';
+            };
+
+            document.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"]').forEach(el => {
+                const text = el.innerText || el.value || '';
+                const icon = text.trim() ? matchIcon(text, btnMap) : null;
+                addIcon(el, icon || 'fa-circle', 'prepend');
+            });
+
+            document.querySelectorAll('th').forEach(th => {
+                const text = th.innerText || '';
+                const icon = matchIcon(text, thMap);
+                addIcon(th, icon, 'prepend');
+            });
+
+            document.querySelectorAll('label').forEach(label => {
+                const text = label.innerText || '';
+                const icon = matchIcon(text, labelMap);
+                addIcon(label, icon, 'prepend');
+            });
+        });
+
+    </script>
+
+    {% block scripts %}{% endblock %}
+    <!-- Access request modal for inactive features -->
+    <div id="accessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 class="text-lg font-semibold mb-2">Accès restreint</h3>
+            <p id="accessModalMessage" class="text-sm text-gray-700 mb-4">Vous n'avez pas l'autorisation d'accéder à cette fonctionnalité. Contactez un super-administrateur pour demander l'accès.</p>
+
+            <form id="accessRequestForm" method="POST" action="{{ url_for('admin_request_access') }}" class="flex justify-end space-x-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="feature" id="accessFeatureInput" value="">
+                <button type="button" id="accessModalClose" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Fermer</button>
+                <button type="submit" id="requestAccessBtn" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">Demander l'accès</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Intercept clicks on elements marked as inactive-feature and show modal
+        document.addEventListener('click', function(e) {
+            const el = e.target.closest && e.target.closest('.inactive-feature');
+            if (el) {
+                e.preventDefault();
+                const modal = document.getElementById('accessModal');
+                const msg = document.getElementById('accessModalMessage');
+                const featureInput = document.getElementById('accessFeatureInput');
+                // Try to derive a friendly feature name
+                let featureName = '';
+                // Prefer data-feature attribute, then innerText, then title
+                if (el.dataset && el.dataset.feature) featureName = el.dataset.feature;
+                if (!featureName) featureName = (el.innerText || el.getAttribute('title') || '').trim();
+                if (featureName) {
+                    msg.textContent = `Accès restreint — vous n'êtes pas autorisé à utiliser : "${featureName}". Contactez le super-administrateur pour demander l'accès.`;
+                    featureInput.value = featureName;
+                } else {
+                    msg.textContent = "Vous n'avez pas l'autorisation d'accéder à cette fonctionnalité. Contactez un super-administrateur pour demander l'accès.";
+                    featureInput.value = '';
+                }
+                modal.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('accessModalClose').addEventListener('click', function() {
+            document.getElementById('accessModal').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

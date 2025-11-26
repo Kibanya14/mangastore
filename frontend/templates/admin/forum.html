@@ -1,0 +1,9 @@
+{% extends "basee.html" %}
+
+{% block title %}Forum - Admin{% endblock %}
+{% block header_title %}Forum communautaire{% endblock %}
+
+{% block content %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+{% include 'shared/forum_board.html' %}
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "basee.html" %}
+
+{% block title %}Demandes d'accès{% endblock %}
+{% block header_title %}Demandes d'accès{% endblock %}
+
+{% block content %}
+<div class="card-surface rounded-lg shadow p-6 border border-gray-200 space-y-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="p-3 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700{% elif category == 'success' %}bg-green-100 text-green-700{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if requests %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">#</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Demandeur</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Feature</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Message</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Statut</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Créé</th>
+                    <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for r in requests %}
+                {% set badge = {
+                    'pending': ('En attente', 'bg-yellow-100 text-yellow-800'),
+                    'approved': ('Approuvée', 'bg-green-100 text-green-800'),
+                    'rejected': ('Rejetée', 'bg-red-100 text-red-800')
+                }.get(r.status, ('Inconnue', 'bg-gray-100 text-gray-700')) %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-sm text-gray-700">{{ r.id }}</td>
+                    <td class="px-4 py-2 text-sm text-gray-700">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                                {% if r.requester.profile_picture %}
+                                <img src="{{ url_for('static', filename='uploads/profiles/' + r.requester.profile_picture) }}" alt="{{ r.requester.first_name }}" class="h-full w-full object-cover">
+                                {% else %}
+                                <i class="fas fa-user text-gray-500"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold">{{ r.requester.first_name }} {{ r.requester.last_name }}</span>
+                                    {% if current_user.is_super_admin or current_user.has_permission('manage_admins') %}
+                                    <a href="{{ url_for('admin_manage_admins') }}?edit={{ r.admin_id }}#edit-{{ r.admin_id }}" class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-500">{{ r.requester.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-700">
+                        {% set req_perms = (r.feature or '').replace('|', ',').split(',') %}
+                        {% if req_perms %}
+                        <div class="flex flex-wrap gap-1">
+                            {% for p in req_perms if p.strip() %}
+                            <span class="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-100">{{ permission_labels.get(p.strip(), p.strip()) }}</span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span>-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-700">{{ r.message or '-' }}</td>
+                    <td class="px-4 py-2 text-sm text-gray-700">
+                        <span class="px-2 py-1 rounded-full text-xs {{ badge[1] }}">{{ badge[0] }}</span>
+                        {% if r.processed_by %}
+                        <div class="text-xs text-gray-500 mt-1">Par: {{ r.processor.first_name if r.processor else 'N/A' }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-500">{{ r.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td class="px-4 py-2 text-sm text-gray-700">
+                        {% if r.status == 'pending' %}
+                        <form method="POST" action="{{ url_for('admin_process_access_request', request_id=r.id) }}" class="space-y-2 bg-white p-3 border rounded-lg">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label class="block text-xs text-gray-600 mb-1">Message au demandeur</label>
+                            <textarea name="response_message" rows="2" class="w-full px-2 py-1 border rounded" placeholder="Précisez l'action ou les limites accordées"></textarea>
+                            <div class="flex items-center gap-2">
+                                <button type="submit" name="action" value="approve" class="px-3 py-1 bg-green-600 text-white rounded">Approuver</button>
+                                <button type="submit" name="action" value="reject" class="px-3 py-1 bg-red-600 text-white rounded">Rejeter</button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="text-xs text-gray-500">
+                            Traité le {{ r.processed_at.strftime('%d/%m/%Y %H:%M') if r.processed_at else '-' }}<br>
+                            Réponse: {{ r.response_message or '—' }}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center p-6 text-gray-500">Aucune demande d'accès trouvée.</div>
+    {% endif %}
+</div>
+{% endblock %}

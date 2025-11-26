@@ -1,0 +1,158 @@
+{% extends "basee.html" %}
+
+{% block title %}Commande {{ order.order_number }}{% endblock %}
+{% block header_title %}Commande {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm text-gray-500">Client : {{ order.customer.first_name }} {{ order.customer.last_name }} • {{ order.customer.email }}</p>
+            <p class="text-sm text-gray-500 flex items-center gap-2">
+                <span>Adresse de livraison : {{ order.shipping_geocoded or order.shipping_address }}</span>
+                <button type="button" data-copy="{{ order.shipping_geocoded or order.shipping_address }}" class="copy-btn text-purple-600 hover:text-purple-800 text-xs">Copier</button>
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('admin_download_invoice', order_id=order.id) }}" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 currency-prompt-download">
+                <i class="fas fa-file-pdf"></i> Facture
+            </a>
+            <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Retour</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold text-gray-800 mb-3">Articles</h3>
+            <div class="divide-y">
+                {% for item in order.items %}
+                <div class="py-3 flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">{{ item.product.name if item.product else 'Produit supprimé' }}</p>
+                        <p class="text-xs text-gray-500">Quantité : {{ item.quantity }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-700">{{ convert_price(item.price, from_currency=base_currency) }}</p>
+                        <p class="text-xs text-gray-500">Total : {{ convert_price(item.quantity * item.price, from_currency=base_currency) }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-500"><i class="fas fa-info-circle mr-1"></i>Statut : {{ status_fr(order.status, 'order') }}</div>
+    <div class="text-lg font-bold text-gray-900"><i class="fas fa-coins mr-1"></i>{{ convert_price(order.total_amount, from_currency=base_currency) }}</div>
+            </div>
+
+            <div class="mt-6 border-t pt-4 space-y-3">
+                <h4 class="font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-truck text-purple-600"></i> Assignation livreur
+                </h4>
+                <form action="{{ url_for('admin_assign_deliverer', order_id=order.id) }}" method="POST" class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-gray-500 block mb-1"><i class="fas fa-truck mr-1"></i>Livreur</label>
+                        <select name="deliverer_id" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" required>
+                            <option value="">Sélectionner</option>
+                            {% for d in deliverers %}
+                            <option value="{{ d.id }}">{{ d.first_name }} {{ d.last_name }} - {{ d.email }} ({{ status_fr(d.status, 'deliverer') }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs text-gray-500 block mb-1"><i class="fas fa-sticky-note mr-1"></i>Note interne</label>
+                        <input type="text" name="note" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Infos pour le livreur (optionnel)">
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Assigner</button>
+                    </div>
+                </form>
+
+                {% if assignments %}
+                <div class="border rounded-lg">
+                    <div class="grid grid-cols-5 text-xs font-semibold text-gray-500 uppercase bg-gray-50 px-3 py-2">
+                        <span><i class="fas fa-user mr-1"></i>Livreur</span><span><i class="fas fa-tasks mr-1"></i>Statut mission</span><span><i class="fas fa-signal mr-1"></i>Statut livreur</span><span><i class="fas fa-sticky-note mr-1"></i>Note</span><span><i class="fas fa-clock mr-1"></i>Date</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for a in assignments %}
+                        <div class="grid grid-cols-5 px-3 py-3 text-sm items-center">
+                            <div class="font-semibold text-gray-800">{{ a.deliverer.first_name }} {{ a.deliverer.last_name }}</div>
+                            <div><span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">{{ status_fr(a.status, 'assignment') }}</span></div>
+                            <div><span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">{{ status_fr(a.deliverer.status, 'deliverer') }}</span></div>
+                            <div class="text-gray-600">{{ a.note or '—' }}</div>
+                            <div class="text-gray-500 text-xs">{{ a.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-4 space-y-3">
+            <h3 class="font-semibold text-gray-800">Localisation du client</h3>
+            {% if map_data %}
+            <div class="w-full rounded-lg border overflow-hidden">
+                <iframe
+                    src="https://www.google.com/maps?q={{ map_data.lat }},{{ map_data.lon }}&z=15&output=embed"
+                    class="w-full h-64"
+                    style="border:0;"
+                    allowfullscreen=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+            <p class="text-xs text-gray-500 flex flex-wrap items-center gap-3 mt-2">
+                <span>Adresse géocodée : {{ map_data.label }}</span>
+                <button type="button" data-copy="{{ map_data.label }}" class="copy-btn text-purple-600 hover:text-purple-800">Copier</button>
+                <button type="button" data-copy="{{ map_data.lat }},{{ map_data.lon }}" class="copy-btn text-purple-600 hover:text-purple-800">Copier lat/lon</button>
+                <a href="{{ map_data.link }}" target="_blank" rel="noopener" class="text-blue-600 hover:text-blue-800">Ouvrir dans Google Maps</a>
+            </p>
+            {% else %}
+            <p class="text-sm text-gray-600">Aucune coordonnée enregistrée pour cette commande.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    function bindCopy() {
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.getAttribute('data-copy') || '';
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.textContent = 'Copié';
+                    setTimeout(() => btn.textContent = 'Copier', 1200);
+                }).catch(() => {
+                    btn.textContent = 'Erreur';
+                    setTimeout(() => btn.textContent = 'Copier', 1200);
+                });
+            });
+        });
+    }
+
+    bindCopy();
+
+    const currencies = {{ available_currencies|tojson|safe }};
+    const defaultCurrency = "{{ (current_currency or base_currency)|upper }}";
+    const normalize = (val) => (val || '').trim().toUpperCase();
+    document.querySelectorAll('.currency-prompt-download').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            if (!href) return;
+            const choice = prompt(`Choisissez la devise pour la facture (${currencies.join(', ')})`, defaultCurrency);
+            if (!choice) return;
+            const code = normalize(choice);
+            if (!currencies.map(normalize).includes(code)) {
+                alert('Devise non supportée.');
+                return;
+            }
+            const separator = href.includes('?') ? '&' : '?';
+            window.location.href = `${href}${separator}currency=${encodeURIComponent(code)}`;
+        });
+    });
+});
+</script>
+{% endblock %}

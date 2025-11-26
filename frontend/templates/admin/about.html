@@ -1,0 +1,31 @@
+{% extends "basee.html" %}
+
+{% block title %}À propos - Admin{% endblock %}
+{% block header_title %}À propos de Manga Store{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6 space-y-4">
+    <h2 class="text-xl font-semibold text-gray-800">Maniana Ngayo (Manga)</h2>
+    <p class="text-gray-700 leading-relaxed">
+        "Manga" est l'abréviation de <strong>Maniana Ngayo</strong>, fondateur de Manga Store. Cette plateforme e-commerce est pensée pour gérer produits, commandes et livraisons avec précision, tout en offrant une expérience claire pour les clients comme pour l'équipe.
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 bg-gray-50 rounded">
+            <h3 class="font-semibold text-gray-800 mb-2">Mentions légales</h3>
+            <ul class="text-sm text-gray-700 space-y-1">
+                <li>Raison sociale : Manga Store (Maniana Ngayo)</li>
+                <li>Contact : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}</li>
+                <li>Téléphone : {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}</li>
+            </ul>
+        </div>
+        <div class="p-4 bg-gray-50 rounded">
+            <h3 class="font-semibold text-gray-800 mb-2">Bonnes pratiques internes</h3>
+            <ul class="text-sm text-gray-700 space-y-1">
+                <li>Valider les stocks avant expédition.</li>
+                <li>Utiliser la localisation client pour optimiser la livraison.</li>
+                <li>Mettre à jour les statuts commandes en temps réel.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

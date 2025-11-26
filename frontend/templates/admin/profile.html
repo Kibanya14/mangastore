@@ -1,0 +1,194 @@
+{% extends "basee.html" %}
+
+{% block title %}Profil administrateur{% endblock %}
+{% block header_title %}Profil administrateur{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="card-surface rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Photo de profil</h2>
+        <div class="flex items-center space-x-4">
+            <div class="h-20 w-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                {% else %}
+                <img src="{{ url_for('static', filename='uploads/profiles/default_profile.svg') }}" alt="Profil" class="h-full w-full object-cover">
+                {% endif %}
+            </div>
+            <form action="{{ url_for('update_profile_picture') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="file" name="profile_picture" accept="image/*" required class="text-sm">
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Mettre à jour</button>
+            </form>
+        </div>
+    </div>
+
+    <form method="POST" class="card-surface rounded-lg shadow p-6 space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h2 class="text-xl font-semibold">Informations personnelles</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                <input type="text" name="first_name" value="{{ current_user.first_name }}" required class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                <input type="text" name="last_name" value="{{ current_user.last_name }}" required class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" name="email" value="{{ current_user.email }}" required class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                <input type="text" name="phone" value="{{ current_user.phone }}" class="w-full px-3 py-2 border rounded">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                <textarea name="address" rows="2" class="w-full px-3 py-2 border rounded" id="admin_profile_address">{{ current_user.address }}</textarea>
+                <input type="hidden" id="admin_profile_lat">
+                <input type="hidden" id="admin_profile_lon">
+                <input type="hidden" id="admin_profile_label">
+                <div class="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <button type="button"
+                            class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 w-full sm:w-auto justify-center"
+                            data-geo-btn
+                            data-geo-target="admin_profile_address"
+                            data-geo-lat="admin_profile_lat"
+                            data-geo-lon="admin_profile_lon"
+                            data-geo-label="admin_profile_label"
+                            data-geo-map="admin_profile_map"
+                            data-geo-status="admin_profile_status">
+                        <i class="fas fa-location-crosshairs"></i>
+                        <span>Me géolocaliser</span>
+                    </button>
+                    <p id="admin_profile_status" class="text-xs text-gray-500">Gagnez du temps en utilisant votre position actuelle.</p>
+                </div>
+                <div class="mt-2 hidden" id="admin_profile_map_wrapper">
+                    <iframe id="admin_profile_map" class="w-full h-40 rounded-lg border" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+        <div class="flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Enregistrer</button>
+        </div>
+    </form>
+
+    <div class="card-surface rounded-lg shadow p-6 space-y-4">
+        <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-chart-pie text-purple-600"></i>Statistiques rapides</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-3 border rounded text-center">
+                <p class="text-xs text-gray-500 flex items-center gap-1 justify-center"><i class="fas fa-box-open text-purple-600"></i>Produits</p>
+                <p class="text-lg font-semibold">{{ product_count }}</p>
+            </div>
+            <div class="p-3 border rounded text-center">
+                <p class="text-xs text-gray-500 flex items-center gap-1 justify-center"><i class="fas fa-shopping-cart text-blue-600"></i>Commandes</p>
+                <p class="text-lg font-semibold">{{ order_count }}</p>
+            </div>
+            <div class="p-3 border rounded text-center">
+                <p class="text-xs text-gray-500 flex items-center gap-1 justify-center"><i class="fas fa-users text-green-600"></i>Clients</p>
+                <p class="text-lg font-semibold">{{ user_count }}</p>
+            </div>
+            <div class="p-3 border rounded text-center">
+                <p class="text-xs text-gray-500 flex items-center gap-1 justify-center"><i class="fas fa-hourglass-half text-amber-600"></i>En attente</p>
+                <p class="text-lg font-semibold">{{ pending_count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-surface rounded-lg shadow p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h2 class="text-xl font-semibold flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text text-amber-600"></i>
+                    <span>Demandes d'accès</span>
+                </h2>
+                <p class="text-sm text-gray-600">Rédigez une demande qui sera transmise au super admin.</p>
+            </div>
+            {% if current_user.is_super_admin %}
+            <a href="{{ url_for('admin_access_requests') }}" class="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-2">
+                <i class="fas fa-arrow-right"></i><span>Voir toutes les demandes</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <form action="{{ url_for('admin_request_access') }}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 border rounded-lg p-4 bg-gray-50">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="md:col-span-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fonctionnalités manquantes</label>
+                {% if missing_permissions %}
+                <div class="space-y-2 max-h-40 overflow-auto pr-1">
+                    {% for perm in missing_permissions %}
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions_requested" value="{{ perm }}" class="text-purple-600 focus:ring-purple-500">
+                        <span>{{ permission_labels.get(perm, perm) }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">Vous disposez déjà de toutes les permissions disponibles.</p>
+                {% endif %}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Message au super admin</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <textarea name="message" rows="2" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Expliquez pourquoi vous avez besoin de cet accès"></textarea>
+                    <button type="submit" {% if not missing_permissions %}disabled class="self-start px-4 py-2 bg-gray-300 text-white rounded-lg cursor-not-allowed"{% else %}class="self-start px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"{% endif %}>
+                        <i class="fas fa-paper-plane"></i><span>Envoyer</span>
+                    </button>
+                </div>
+                {% if missing_permissions %}
+                <p class="text-xs text-gray-500 mt-2">Sélectionnez une ou plusieurs fonctionnalités que vous souhaitez activer.</p>
+                {% endif %}
+            </div>
+        </form>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Demande</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Statut</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Réponse</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for r in my_requests %}
+                    {% set badge = {
+                        'pending': ('En attente', 'bg-yellow-100 text-yellow-800'),
+                        'approved': ('Approuvée', 'bg-green-100 text-green-800'),
+                        'rejected': ('Rejetée', 'bg-red-100 text-red-800')
+                    }.get(r.status, ('Inconnue', 'bg-gray-100 text-gray-700')) %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-700">{{ r.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="px-4 py-2">
+                            {% set req_perms = (r.feature or '').replace('|', ',').split(',') %}
+                            <div class="font-semibold text-gray-800">
+                                {% for p in req_perms if p.strip() %}
+                                    <span class="inline-block px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-100 mr-1 mb-1">{{ permission_labels.get(p.strip(), p.strip()) }}</span>
+                                {% else %}
+                                    <span>—</span>
+                                {% endfor %}
+                            </div>
+                            <div class="text-xs text-gray-500">{{ r.message or '—' }}</div>
+                        </td>
+                        <td class="px-4 py-2">
+                            <span class="px-2 py-1 rounded-full text-xs {{ badge[1] }}">{{ badge[0] }}</span>
+                            {% if r.processed_by %}
+                            <div class="text-xs text-gray-500 mt-1">Par: {{ r.processor.first_name if r.processor else 'N/A' }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-gray-700">{{ r.response_message or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-3 text-center text-gray-500">Aucune demande pour le moment.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

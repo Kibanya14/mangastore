@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white rounded-xl shadow p-6">
+        <div class="space-y-4">
+            {% set img = get_first_image_url(product) %}
+            {% if img %}
+            <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-80 object-cover rounded-lg border">
+            {% else %}
+            <div class="w-full h-80 bg-gray-100 flex items-center justify-center rounded-lg">
+                <i class="fas fa-book text-5xl text-gray-400"></i>
+            </div>
+            {% endif %}
+        </div>
+        <div class="space-y-4">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ product.name }}</h1>
+                    <p class="text-sm text-gray-500 mt-1">{{ product.category.name if product.category else '' }}</p>
+                </div>
+                {% if product.quantity > 0 %}
+                <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700">En stock</span>
+                {% else %}
+                <span class="px-3 py-1 text-xs rounded-full bg-red-100 text-red-700">Rupture</span>
+                {% endif %}
+            </div>
+            <div class="text-2xl font-semibold text-purple-700">{{ convert_price(product.price, from_currency=base_currency) }}</div>
+            <p class="text-gray-700 leading-relaxed">{{ product.description or 'Pas de description disponible pour ce produit.' }}</p>
+
+            {% if current_user.is_authenticated and not current_user.is_admin and product.quantity > 0 %}
+            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="block text-sm font-medium text-gray-700">Quantité</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" class="w-24 px-3 py-2 border rounded-lg">
+                    <button type="submit" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                        <i class="fas fa-cart-plus"></i> Ajouter au panier
+                    </button>
+                </div>
+            </form>
+            {% elif not current_user.is_authenticated %}
+            <a href="{{ url_for('client_login') }}" class="inline-block px-5 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Connectez-vous pour acheter</a>
+            {% else %}
+            <div class="text-sm text-gray-500">Indisponible pour les administrateurs.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

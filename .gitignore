@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Env & config
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# DB / migrations artifacts
+database.db
+instance/
+migrations/versions/__pycache__/
+
+# Uploads (garder les assets par défaut)
+frontend/static/uploads/*
+!frontend/static/uploads/logos/
+!frontend/static/uploads/logos/default_logo.svg
+!frontend/static/uploads/logos/default_admin_logo.svg
+!frontend/static/uploads/logos/default_deliverer_logo.svg
+!frontend/static/uploads/profiles/
+!frontend/static/uploads/products/
+
+# Reports / logs
+logs/
+*.log
+
+# Node / front cache
+node_modules/
+*.cache

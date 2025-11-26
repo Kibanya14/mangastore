@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Manga Livreur{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --brand: #0f766e; --brand-dark: #0d5c54; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                    {% if shop_settings and shop_settings.deliverer_logo %}
+                    <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
+                    {% else %}
+                    <span>ML</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <p class="text-lg font-semibold text-gray-800">Manga Livreur</p>
+                    <p class="text-xs text-gray-500">Interface livreur</p>
+                </div>
+            </div>
+            {% if current_user.is_authenticated and current_user.is_deliverer %}
+            <div class="flex items-center gap-4">
+                <a href="{{ url_for('deliverer_dashboard') }}" class="text-sm text-gray-700 hover:text-emerald-600">Tableau de bord</a>
+                <a href="{{ url_for('deliverer_profile') }}" class="text-sm text-gray-700 hover:text-emerald-600">Profil</a>
+                <a href="{{ url_for('forum') }}" class="text-sm text-gray-700 hover:text-emerald-600 flex items-center gap-1">
+                    <i class="fas fa-comments text-emerald-600"></i> Forum
+                </a>
+                <a href="{{ url_for('deliverer_about') }}" class="text-sm text-gray-700 hover:text-emerald-600">À propos</a>
+                <form action="{{ url_for('set_currency') }}" method="POST" class="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <i class="fas fa-coins text-yellow-500 text-sm"></i>
+                    <select name="currency" onchange="this.form.submit()" class="bg-transparent text-sm focus:outline-none">
+                        {% for cur in available_currencies %}
+                        <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <div class="relative group">
+                    <button class="h-10 w-10 rounded-full border border-emerald-200 overflow-hidden flex items-center justify-center bg-emerald-50">
+                        {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                        {% else %}
+                        <i class="fas fa-user text-emerald-700"></i>
+                        {% endif %}
+                    </button>
+                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        <a href="{{ url_for('deliverer_profile') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700">Profil</a>
+                        <a href="{{ url_for('deliverer_logout') }}" class="block px-4 py-3 text-sm text-red-600 hover:bg-red-50">Déconnexion</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-6xl mx-auto px-4 mt-4 space-y-2">
+        {% for category, message in messages %}
+        <div class="p-3 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700 border border-red-200{% else %}bg-emerald-100 text-emerald-700 border border-emerald-200{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer-fixed max-w-6xl mx-auto px-4 py-6 text-center text-xs text-gray-500 mt-auto w-full">
+        <p>© 2025 Manga Store Livreur. Propulsé par Esperdigi. Tous droits réservés.</p>
+    </footer>
+    <script>
+        // Géolocalisation pour les formulaires (boutons data-geo-btn)
+        function initGeoWidgets() {
+            document.querySelectorAll('[data-geo-btn]').forEach(btn => {
+                if (btn.dataset.geoBound) return;
+                btn.dataset.geoBound = '1';
+                const target = document.getElementById(btn.dataset.geoTarget);
+                const latEl = document.getElementById(btn.dataset.geoLat);
+                const lonEl = document.getElementById(btn.dataset.geoLon);
+                const labelEl = document.getElementById(btn.dataset.geoLabel);
+                const statusEl = document.getElementById(btn.dataset.geoStatus);
+                const mapFrame = document.getElementById(btn.dataset.geoMap);
+                const mapWrapper = mapFrame ? mapFrame.parentElement : null;
+
+                const setStatus = (msg, isError=false) => {
+                    if (!statusEl) return;
+                    statusEl.textContent = msg;
+                    statusEl.className = `text-xs ${isError ? 'text-red-600' : 'text-gray-600'}`;
+                };
+
+                const setCoords = (lat, lon, label='') => {
+                    if (latEl) latEl.value = lat;
+                    if (lonEl) lonEl.value = lon;
+                    if (labelEl) labelEl.value = label || (target ? target.value : '');
+                    if (mapFrame) {
+                        mapFrame.src = `https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+                        mapWrapper && mapWrapper.classList.remove('hidden');
+                    }
+                    setStatus('Position détectée.');
+                };
+
+                btn.addEventListener('click', () => {
+                    if (!navigator.geolocation) {
+                        setStatus('La géolocalisation n’est pas supportée.', true);
+                        return;
+                    }
+                    setStatus('Recherche de votre position...');
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const { latitude, longitude } = pos.coords;
+                            setCoords(latitude.toFixed(6), longitude.toFixed(6));
+                        },
+                        () => setStatus('Impossible de récupérer votre position.', true),
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+                    );
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', initGeoWidgets);
+    </script>
+</body>
+</html>

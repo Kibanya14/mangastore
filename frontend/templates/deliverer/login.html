@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Livreur - Manga Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0ea5e9 0%, #0f766e 100%); }
+        .login-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .footer-fixed { position: fixed; left: 0; right: 0; bottom: 12px; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full">
+        <div class="login-card rounded-2xl shadow-2xl p-8 text-white">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                    {% if shop_settings and shop_settings.deliverer_logo %}
+                    <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
+                    {% else %}
+                    <span class="text-3xl font-bold text-emerald-700">ML</span>
+                    {% endif %}
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Espace Livreur</h1>
+                <p class="opacity-80">Connectez-vous pour gérer vos livraisons</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-500{% else %}bg-emerald-500{% endif %} text-white flash-message">
+                    <div class="flex items-center justify-between">
+                        <span>{{ message }}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('deliverer_login') }}" method="POST" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <div class="relative">
+                        <input type="email" name="email" required 
+                               class="w-full px-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 pl-12">
+                        <i class="fas fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-opacity-60"></i>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Mot de passe</label>
+                    <div class="relative">
+                        <input id="deliverer_login_password" type="password" name="password" required 
+                               class="w-full px-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 pl-12 pr-10">
+                        <i class="fas fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-opacity-60"></i>
+                        <button type="button" id="toggleDelivererLoginPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-white text-opacity-80">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" 
+                        class="w-full bg-white text-emerald-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 flex items-center justify-center space-x-2">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Se connecter</span>
+                </button>
+            </form>
+        </div>
+        <div class="text-center mt-6 text-white opacity-80">
+            <a href="{{ url_for('index') }}" class="hover:underline">Retour à la boutique</a>
+        </div>
+    </div>
+
+    <footer class="footer-fixed text-center text-white opacity-80 text-xs space-y-1 px-4">
+        <p>© 2025 Manga Store Livreur. Propulsé par Esperdigi. Tous droits réservés.</p>
+    </footer>
+
+    <script>
+    setTimeout(() => {
+        document.querySelectorAll('.flash-message').forEach(f => {
+            f.style.transition = 'opacity 0.5s ease';
+            f.style.opacity = '0';
+            setTimeout(() => f.remove(), 500);
+        });
+    }, 5000);
+
+    const toggleDeliverer = document.getElementById('toggleDelivererLoginPassword');
+    const delivererPwd = document.getElementById('deliverer_login_password');
+    if (toggleDeliverer && delivererPwd) {
+        toggleDeliverer.addEventListener('click', () => {
+            if (delivererPwd.type === 'password') {
+                delivererPwd.type = 'text';
+                toggleDeliverer.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                delivererPwd.type = 'password';
+                toggleDeliverer.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        });
+    }
+    </script>
+</body>
+</html>

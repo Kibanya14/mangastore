@@ -1,0 +1,95 @@
+{% extends "deliverer/base_livreur.html" %}
+
+{% block title %}Livraisons - Manga Livreur{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="bg-white rounded-lg shadow p-4 border border-emerald-100 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-800 mb-1">Livraisons reçues</h2>
+            <p class="text-sm text-gray-500">Suivez vos missions et mettez à jour le statut.</p>
+        </div>
+        <form action="{{ url_for('deliverer_update_status') }}" method="POST" class="flex items-center gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <span class="text-sm text-gray-600">Statut:</span>
+                    <select name="status" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500">
+                        {% for st in ['available','busy','offline'] %}
+                        <option value="{{ st }}" {% if current_user.status == st %}selected{% endif %}>{{ status_fr(st, 'deliverer') }}</option>
+                        {% endfor %}
+                    </select>
+            <button type="submit" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">Mettre à jour</button>
+            <span class="px-2 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {{ status_fr(current_user.status, 'deliverer') }}
+            </span>
+        </form>
+    </div>
+
+    <div class="space-y-3">
+        {% for a in assignments %}
+        <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm text-gray-500">Commande</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ a.order.order_number }}</p>
+                    <p class="text-xs text-gray-500">Statut commande : {{ status_fr(a.order.status, 'order') }}</p>
+                </div>
+                <div class="text-right">
+                    <span class="px-2 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">{{ status_fr(a.status, 'assignment') }}</span>
+                </div>
+            </div>
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="text-sm text-gray-700">
+                    <p class="font-semibold text-gray-800">Adresse client</p>
+                    <p>{{ a.order.shipping_geocoded or a.order.shipping_address }}</p>
+                    {% if a.order.shipping_latitude and a.order.shipping_longitude %}
+                    <p class="text-xs text-gray-500 mt-1">Coords: {{ a.order.shipping_latitude }}, {{ a.order.shipping_longitude }}</p>
+                    <div class="flex items-center gap-2 text-xs mt-1">
+                        <a href="https://www.google.com/maps?q={{ a.order.shipping_latitude }},{{ a.order.shipping_longitude }}" target="_blank" rel="noopener" class="text-emerald-700 hover:underline">Itinéraire</a>
+                        <button type="button" data-copy="{{ a.order.shipping_latitude }},{{ a.order.shipping_longitude }}" class="copy-btn text-emerald-700 hover:underline">Copier</button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="text-sm text-gray-700">
+                    <p class="font-semibold text-gray-800">Client</p>
+                    <p>{{ a.order.customer.first_name }} {{ a.order.customer.last_name }}</p>
+                    <p class="text-xs text-gray-500">{{ a.order.customer.phone or a.order.customer.email }}</p>
+                </div>
+                <div class="text-sm text-gray-700">
+                    <p class="font-semibold text-gray-800">Montant</p>
+                    <p>{{ convert_price(a.order.total_amount, from_currency=base_currency) }}</p>
+                </div>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+                <form action="{{ url_for('deliverer_update_assignment', assignment_id=a.id) }}" method="POST" class="flex items-center gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="status" class="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 text-sm">
+                        {% for st in ['assigned','in_progress','delivered','postponed','cancelled'] %}
+                        <option value="{{ st }}" {% if a.status == st %}selected{% endif %}>{{ status_fr(st, 'assignment') }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="note" placeholder="Note obligatoire (frais livraison perçu ? oui/non)" required class="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 text-sm">
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">Mettre à jour</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow p-6 border border-gray-200 text-center text-gray-500">
+            Aucune livraison assignée pour le moment.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(btn.dataset.copy || '').then(() => {
+                btn.textContent = 'Copié';
+                setTimeout(()=>btn.textContent='Copier', 1200);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

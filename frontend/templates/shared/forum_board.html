@@ -1,0 +1,527 @@
+<div class="max-w-6xl mx-auto space-y-4">
+    <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-4 flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-comments text-purple-600"></i>
+                <span>Groupe communautaire</span>
+            </h1>
+            <p class="text-xs text-gray-600">Espace privé façon messagerie (WhatsApp/Telegram) entre clients, admins et livreurs.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+            <span class="flex items-center gap-1"><i class="fas fa-lock text-green-600"></i>Accès connecté</span>
+            <span class="flex items-center gap-1"><i class="fas fa-microphone text-purple-600"></i>Vocal enregistrement ou upload</span>
+            <span class="flex items-center gap-1"><i class="fas fa-photo-film text-blue-600"></i>{{ allowed_types }}</span>
+            <span class="flex items-center gap-1"><i class="fas fa-database text-amber-600"></i>Max {{ max_size_mb }}MB</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Chat area -->
+        <div class="lg:col-span-3 bg-white rounded-2xl shadow-md border border-gray-200 flex flex-col h-[70vh]">
+            <div id="chat-window" class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {% for msg in messages|reverse %}
+                {% set avatar = None %}
+                {% set sender_name = 'Utilisateur' %}
+                {% set is_me = False %}
+                {% if msg.deliverer and msg.deliverer.profile_picture %}{% set avatar = url_for('static', filename='uploads/profiles/' + msg.deliverer.profile_picture) %}{% endif %}
+                {% if msg.requester and msg.requester.profile_picture %}{% set avatar = url_for('static', filename='uploads/profiles/' + msg.requester.profile_picture) %}{% endif %}
+                {% if msg.deliverer %}{% set sender_name = msg.deliverer.first_name ~ ' ' ~ msg.deliverer.last_name %}{% endif %}
+                {% if msg.requester %}{% set sender_name = msg.requester.first_name ~ ' ' ~ msg.requester.last_name %}{% endif %}
+                {% if current_user.is_authenticated %}
+                    {% if msg.deliverer and current_user.is_deliverer and msg.deliverer.id == current_user.id %}
+                        {% set is_me = True %}
+                    {% elif msg.requester and not current_user.is_deliverer and msg.requester.id == current_user.id %}
+                        {% set is_me = True %}
+                    {% endif %}
+                {% endif %}
+                <div class="flex {{ 'justify-end' if is_me else 'justify-start' }}">
+                    <div class="max-w-xl w-full">
+                        <div class="flex items-start gap-2 {{ 'flex-row-reverse text-right' if is_me else '' }}">
+                            <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                {% if avatar %}
+                                <img src="{{ avatar }}" alt="avatar" class="h-full w-full object-cover">
+                                {% else %}
+                                <i class="fas fa-user text-gray-500"></i>
+                                {% endif %}
+                            </div>
+                            <div class="{{ 'items-end' if is_me else 'items-start' }} flex flex-col gap-1">
+                                <div class="flex items-center gap-2 {{ 'flex-row-reverse' if is_me else '' }}">
+                                    <span class="text-xs font-semibold text-gray-700">{{ sender_name }}</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ 'bg-purple-100 text-purple-700' if is_me else 'bg-gray-100 text-gray-700' }} capitalize">{{ msg.role }}</span>
+                                </div>
+                                <div class="rounded-2xl px-4 py-3 border {{ 'bg-purple-50 border-purple-200' if is_me else 'bg-gray-50 border-gray-200' }}">
+                                    {% if msg.content %}
+                                    <p class="text-sm text-gray-800 whitespace-pre-line">{{ msg.content }}</p>
+                                    {% endif %}
+                                    {% if msg.attachment_path %}
+                                    <div class="mt-2 space-y-2">
+                                        {% if msg.attachment_type == 'image' %}
+                                        <img src="{{ url_for('static', filename=msg.attachment_path) }}" alt="Pièce jointe" class="rounded-lg max-h-64 object-contain border">
+                                        {% elif msg.attachment_type == 'audio' %}
+                                        <div class="flex items-center gap-2 text-sm text-gray-700">
+                                            <i class="fas fa-microphone text-purple-600"></i>
+                                            <audio controls class="w-full">
+                                                <source src="{{ url_for('static', filename=msg.attachment_path) }}">
+                                            </audio>
+                                        </div>
+                                        {% elif msg.attachment_type == 'video' %}
+                                        <video controls class="rounded-lg w-full max-h-72">
+                                            <source src="{{ url_for('static', filename=msg.attachment_path) }}">
+                                        </video>
+                                        <p class="text-[11px] text-gray-500 flex items-center gap-1"><i class="fas fa-clock"></i>Vidéos conseillées ≤20s</p>
+                                        {% else %}
+                                        <a href="{{ url_for('static', filename=msg.attachment_path) }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-2">
+                                            <i class="fas fa-file"></i>Ouvrir le fichier
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] text-gray-500 mt-1">
+                                    <span>{{ msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '' }}</span>
+                                    {% if is_me %}
+                                    <button type="button" class="copy-btn flex items-center gap-1 hover:text-purple-600" data-copy="{{ (msg.content or '')|replace('\n',' ') }}">
+                                        <i class="fas fa-copy"></i> Copier
+                                    </button>
+                                    <button type="button" class="edit-toggle flex items-center gap-1 hover:text-blue-600" data-edit="edit-form-{{ msg.id }}">
+                                        <i class="fas fa-pen"></i> Modifier
+                                    </button>
+                                    <form action="{{ url_for('forum') }}" method="POST" onsubmit="return confirm('Supprimer ce message ?');" class="inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="message_id" value="{{ msg.id }}">
+                                        <button type="submit" class="flex items-center gap-1 hover:text-red-600">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% if is_me %}
+                                <div id="edit-form-{{ msg.id }}" class="hidden mt-2">
+                                    <form action="{{ url_for('forum') }}" method="POST" class="space-y-2">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="action" value="edit">
+                                        <input type="hidden" name="message_id" value="{{ msg.id }}">
+                                        <textarea name="content" rows="2" class="w-full border rounded-lg px-2 py-1 focus:ring-2 focus:ring-purple-500">{{ msg.content }}</textarea>
+                                        <div class="flex justify-end gap-2 text-xs">
+                                            <button type="button" class="edit-toggle px-3 py-1 border rounded" data-edit="edit-form-{{ msg.id }}">Annuler</button>
+                                            <button type="submit" class="px-3 py-1 bg-purple-600 text-white rounded">Enregistrer</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">Aucun message pour l’instant. Lancez la discussion !</p>
+                {% endfor %}
+            </div>
+
+            <!-- Composer -->
+            <form action="{{ url_for('forum') }}" method="POST" enctype="multipart/form-data" class="p-3 border-t border-gray-200 space-y-2" id="chat-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="flex items-center gap-2">
+                    <label class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-purple-50" title="Joindre un média (image/gif/audio/vidéo)">
+                        <i class="fas fa-plus text-gray-600"></i>
+                        <input type="file" name="attachment" id="attachment-input" accept="image/*,audio/*,video/*" class="hidden">
+                    </label>
+                    <button type="button" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-purple-50 text-amber-600" id="sticker-btn" title="Stickers / GIF">
+                        <i class="fas fa-icons"></i>
+                    </button>
+                    <button type="button" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-purple-50 text-yellow-600" id="emoji-btn" title="Emoji">
+                        <i class="fas fa-face-smile"></i>
+                    </button>
+                    <label class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-purple-50" id="record-btn" title="Enregistrer un vocal">
+                        <i class="fas fa-microphone text-purple-600"></i>
+                    </label>
+                    <textarea name="content" rows="2" class="flex-1 border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500" placeholder="Message..."></textarea>
+                    <button type="submit" class="w-12 h-12 rounded-full bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div id="emoji-picker" class="hidden bg-white border border-gray-200 rounded-xl shadow p-2 flex flex-wrap gap-2 max-w-lg">
+                    {% set emojis = ['😀','😁','😂','🤣','😊','😍','😘','😎','😇','🤩','🤔','😢','😡','👍','🙏','👏','🔥','✨','🎉','🎯','❤️','🤝','🚀'] %}
+                    {% for e in emojis %}
+                    <button type="button" class="px-2 py-1 text-xl hover:bg-purple-50 rounded" data-emoji="{{ e }}">{{ e }}</button>
+                    {% endfor %}
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-gray-500">
+                    <span class="flex items-center gap-1"><i class="fas fa-music"></i>Vocal ≤20s</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-photo-film"></i>Images / GIF / Vidéos</span>
+                    <span id="record-status" class="text-purple-600 hidden flex items-center gap-1"><i class="fas fa-circle-notch fa-spin"></i>Enregistrement...</span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Online users -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 space-y-4 h-[70vh] overflow-y-auto">
+            <div class="flex items-center gap-2 text-gray-800 font-semibold">
+                <i class="fas fa-signal text-green-600"></i>
+                <span>Utilisateurs en ligne</span>
+            </div>
+            <div class="space-y-3">
+                {% for u in online_users %}
+                <button type="button" class="w-full text-left flex items-center gap-3 group" data-call-name="{{ u.name }}" data-call-id="{{ u.user_id }}" {% if u.is_me %}data-self="1"{% endif %}>
+                    <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                        {% if u.avatar %}
+                        <img src="{{ u.avatar }}" alt="{{ u.name }}" class="h-full w-full object-cover">
+                        {% else %}
+                        <i class="fas fa-user text-gray-500"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray-800 group-hover:text-purple-700">
+                                {{ u.name }}{% if u.is_me %} (vous-même){% endif %}
+                            </span>
+                            <span class="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 capitalize">{{ u.role }}</span>
+                        </div>
+                        <p class="text-xs text-green-600 flex items-center gap-1"><i class="fas fa-circle text-[8px]"></i>{{ u.status }}</p>
+                        <div class="mt-1 flex items-center gap-2 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition {% if u.is_me %}hidden{% endif %}">
+                            <span class="flex items-center gap-1"><i class="fas fa-phone text-green-600"></i>Appel</span>
+                            <span class="flex items-center gap-1"><i class="fas fa-video text-blue-600"></i>Video</span>
+                        </div>
+                    </div>
+                </button>
+                {% else %}
+                <p class="text-sm text-gray-500">Aucun utilisateur visible pour l'instant.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call overlay -->
+<div id="call-overlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-4 space-y-3">
+        <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+                <i class="fas fa-phone-volume"></i>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500" id="call-status">Appel...</p>
+                <p class="text-lg font-semibold text-gray-800" id="call-peer-name"></p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <video id="remote-video" class="w-full rounded-xl bg-gray-100 min-h-[160px]" autoplay playsinline></video>
+            <video id="local-video" class="w-full rounded-xl bg-gray-100 min-h-[160px]" autoplay muted playsinline></video>
+        </div>
+        <div class="flex flex-wrap gap-2 justify-end">
+            <button id="call-accept" class="hidden px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"><i class="fas fa-check"></i>Accepter</button>
+            <button id="call-reject" class="hidden px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 flex items-center gap-2"><i class="fas fa-times"></i>Refuser</button>
+            <button id="call-mute" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"><i class="fas fa-microphone-slash"></i>Mute</button>
+            <button id="call-camera" class="hidden px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"><i class="fas fa-video-slash"></i>Cam</button>
+            <button id="call-hang" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-phone-slash"></i>Raccrocher</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    // Scroll to latest messages
+    const chatWindow = document.getElementById('chat-window');
+    if (chatWindow) {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    const recordBtn = document.getElementById('record-btn');
+    const statusEl = document.getElementById('record-status');
+    const attachInput = document.getElementById('attachment-input');
+    const stickerBtn = document.getElementById('sticker-btn');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPicker = document.getElementById('emoji-picker');
+    let mediaRecorder = null;
+    let chunks = [];
+    let recordTimeout = null;
+
+    function setRecording(isRecording){
+        if (!statusEl) return;
+        statusEl.classList.toggle('hidden', !isRecording);
+        recordBtn.classList.toggle('bg-purple-100', isRecording);
+        recordBtn.classList.toggle('border-purple-300', isRecording);
+    }
+
+    async function startRecording(){
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            chunks = [];
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const file = new File([blob], 'voice-message.webm', { type: 'audio/webm' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                if (attachInput) attachInput.files = dt.files;
+                stream.getTracks().forEach(t => t.stop());
+                setRecording(false);
+            };
+            mediaRecorder.start();
+            setRecording(true);
+            recordTimeout = setTimeout(() => stopRecording(), 20000);
+        } catch (err) {
+            console.error(err);
+            alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
+            setRecording(false);
+        }
+    }
+
+    function stopRecording(){
+        if (recordTimeout) clearTimeout(recordTimeout);
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    }
+
+    if (recordBtn) {
+        recordBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+    }
+
+    // Sticker/GIF: déclencher le picker de fichier (même input)
+    if (stickerBtn && attachInput) {
+        stickerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            attachInput.click();
+        });
+    }
+
+    // Emoji picker
+    if (emojiBtn && emojiPicker) {
+        emojiBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            emojiPicker.classList.toggle('hidden');
+        });
+        emojiPicker.querySelectorAll('[data-emoji]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const textarea = document.querySelector('#chat-form textarea[name=\"content\"]');
+                if (!textarea) return;
+                const emoji = btn.getAttribute('data-emoji');
+                const start = textarea.selectionStart || textarea.value.length;
+                const end = textarea.selectionEnd || textarea.value.length;
+                textarea.value = textarea.value.slice(0, start) + emoji + textarea.value.slice(end);
+                textarea.focus();
+                emojiPicker.classList.add('hidden');
+            });
+        });
+    }
+
+    // Copier message
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const text = btn.getAttribute('data-copy') || '';
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Message copié dans le presse-papiers.');
+            }).catch(() => {
+                alert('Impossible de copier ce message.');
+            });
+        });
+    });
+
+    // Toggle edit forms
+    document.querySelectorAll('.edit-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-edit');
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('hidden');
+        });
+    });
+
+    // --- SocketIO + WebRTC (squelette) ---
+    const socket = window.io ? window.io({ transports: ['websocket'] }) : null;
+    const peers = {};
+    const localMedia = { stream: null };
+    const stunServers = {{ ice_servers|tojson|safe if ice_servers else '[{"urls":"stun:stun.l.google.com:19302"}]' }};
+    const currentUserId = "{{ current_user_id }}";
+    const currentUserName = "{{ current_user_name }}";
+    const overlay = document.getElementById('call-overlay');
+    const remoteVideo = document.getElementById('remote-video');
+    const localVideo = document.getElementById('local-video');
+    const btnAccept = document.getElementById('call-accept');
+    const btnReject = document.getElementById('call-reject');
+    const btnHang = document.getElementById('call-hang');
+    const btnMute = document.getElementById('call-mute');
+    const btnCam = document.getElementById('call-camera');
+    const statusEl = document.getElementById('call-status');
+    const peerNameEl = document.getElementById('call-peer-name');
+    let currentTarget = null;
+    let withVideo = false;
+
+    async function getLocalStream(video=false){
+        if (localMedia.stream) return localMedia.stream;
+        localMedia.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
+        return localMedia.stream;
+    }
+
+    function createPeer(targetId, withVideo=false){
+        const pc = new RTCPeerConnection({ iceServers: stunServers });
+        peers[targetId] = pc;
+        pc.onicecandidate = (ev) => {
+            if (ev.candidate) {
+                socket.emit('call:candidate', { to: targetId, candidate: ev.candidate, from: currentUserId });
+            }
+        };
+        pc.ontrack = (ev) => {
+            if (remoteVideo) {
+                const [stream] = ev.streams;
+                remoteVideo.srcObject = stream;
+            }
+        };
+        getLocalStream(withVideo).then(stream => {
+            stream.getTracks().forEach(t => pc.addTrack(t, stream));
+            if (localVideo) localVideo.srcObject = stream;
+        }).catch(err => console.error(err));
+        return pc;
+    }
+
+    function showOverlay(mode, name){
+        if (!overlay) return;
+        overlay.classList.remove('hidden');
+        peerNameEl.textContent = name || '';
+        statusEl.textContent = mode;
+        [btnAccept, btnReject, btnHang, btnMute, btnCam].forEach(btn => btn && btn.classList.add('hidden'));
+        if (mode === 'Entrant') {
+            btnAccept.classList.remove('hidden');
+            btnReject.classList.remove('hidden');
+        } else if (mode === 'En cours') {
+            btnHang.classList.remove('hidden');
+            btnMute.classList.remove('hidden');
+            btnCam.classList.remove('hidden');
+        } else if (mode === 'Sortant') {
+            btnHang.classList.remove('hidden');
+        }
+    }
+
+    function hideOverlay(){
+        if (overlay) overlay.classList.add('hidden');
+        [remoteVideo, localVideo].forEach(v => { if (v) v.srcObject = null; });
+    }
+
+    function cleanupPeer(targetId){
+        const pc = peers[targetId];
+        if (pc) {
+            pc.getSenders().forEach(s => s.track && s.track.stop && s.track.stop());
+            pc.close();
+            delete peers[targetId];
+        }
+        currentTarget = null;
+        withVideo = false;
+        hideOverlay();
+    }
+
+    async function callUser(targetId, video=false){
+        if (!socket || !currentUserId || targetId === currentUserId) return;
+        currentTarget = targetId;
+        withVideo = video;
+        const pc = createPeer(targetId, video);
+        showOverlay('Sortant', targetId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('call:init', { to: targetId, from_name: currentUserName, with_video: video });
+        socket.emit('call:offer', { to: targetId, offer, from: currentUserId, with_video: video });
+    }
+
+    if (socket) {
+        socket.on('connect', () => console.log('SocketIO connecté'));
+        socket.on('presence:update', (data) => {
+            console.log('Présence', data);
+        });
+        socket.on('call:ring', (payload) => {
+            currentTarget = payload.from;
+            withVideo = payload.with_video;
+            showOverlay('Entrant', payload.from_name || 'Utilisateur');
+        });
+        socket.on('call:busy', () => {
+            alert("L'utilisateur est occupé.");
+            hideOverlay();
+        });
+        socket.on('call:ready', () => {
+            // callee accepted, caller will proceed (already sent offer)
+            showOverlay('En cours', currentTarget);
+        });
+        socket.on('call:rejected', () => {
+            alert('Appel rejeté.');
+            hideOverlay();
+        });
+        socket.on('call:offer', async (data) => {
+            const from = data.from || data.to;
+            currentTarget = from;
+            withVideo = data.with_video;
+            const pc = createPeer(from, data.with_video);
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('call:answer', { to: from, answer, from: currentUserId });
+            showOverlay('En cours', data.from_name || 'En appel');
+        });
+        socket.on('call:answer', async (data) => {
+            const pc = peers[data.from || data.to];
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+            }
+            showOverlay('En cours', currentTarget);
+        });
+        socket.on('call:candidate', (data) => {
+            const pc = peers[data.from || data.to];
+            if (pc && data.candidate) {
+                pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
+        socket.on('call:end', (data) => {
+            const tid = data.from || data.to || currentTarget;
+            cleanupPeer(tid);
+        });
+    }
+
+    const onlineButtons = document.querySelectorAll('[data-call-name]');
+    onlineButtons.forEach(btn => {
+        if (btn.getAttribute('data-self')) return;
+        btn.addEventListener('click', () => {
+            const name = btn.getAttribute('data-call-name');
+            const target = btn.getAttribute('data-call-id');
+            const choice = confirm(`Appeler ${name} ?\nOK: appel vocal\nAnnuler: appel vidéo`);
+            callUser(target, !choice);
+        });
+    });
+
+    if (btnAccept) btnAccept.addEventListener('click', () => {
+        if (!socket || !currentTarget) return;
+        socket.emit('call:accept', { to: currentTarget });
+        showOverlay('En cours', currentTarget);
+    });
+    if (btnReject) btnReject.addEventListener('click', () => {
+        if (!socket || !currentTarget) return;
+        socket.emit('call:reject', { to: currentTarget });
+        cleanupPeer(currentTarget);
+    });
+    if (btnHang) btnHang.addEventListener('click', () => {
+        if (socket && currentTarget) socket.emit('call:end', { to: currentTarget });
+        cleanupPeer(currentTarget);
+    });
+    if (btnMute) btnMute.addEventListener('click', () => {
+        if (localMedia.stream) {
+            const enabled = localMedia.stream.getAudioTracks().some(t => t.enabled);
+            localMedia.stream.getAudioTracks().forEach(t => t.enabled = !enabled);
+            btnMute.querySelector('i').className = enabled ? 'fas fa-microphone-slash' : 'fas fa-microphone';
+        }
+    });
+    if (btnCam) btnCam.addEventListener('click', () => {
+        if (localMedia.stream) {
+            const enabled = localMedia.stream.getVideoTracks().some(t => t.enabled);
+            localMedia.stream.getVideoTracks().forEach(t => t.enabled = !enabled);
+            btnCam.querySelector('i').className = enabled ? 'fas fa-video-slash' : 'fas fa-video';
+        }
+    });
+})();
+</script>

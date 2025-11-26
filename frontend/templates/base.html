@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Manga Store{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="{{ url_for('static', filename='uploads/logos/' + (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else 'default_logo.svg')) }}">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root { --bg:#f9fafb; --text:#111827; --card:#ffffff; }
+        .dark { --bg:#0f172a; --text:#e5e7eb; --card:#111827; }
+        body { background: var(--bg); color: var(--text); }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="{% if session.get('theme') == 'dark' %}dark{% endif %}">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                {% set cart_count = (cart_items_count if cart_items_count is not none else session.get('cart_count', 0)) | int %}
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-2">
+                        {% if shop_settings and shop_settings.shop_logo %}
+                        <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.shop_logo) }}" 
+                             alt="Logo" class="h-12 w-12 rounded-full object-cover ring-2 ring-purple-100">
+                        {% else %}
+                        <i class="fas fa-book text-purple-600 text-2xl"></i>
+                        {% endif %}
+                        <span class="font-bold text-xl" style="color:var(--text);">
+                            {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
+                        </span>
+                    </a>
+                </div>
+
+                <!-- Menu Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <!-- Currency selector -->
+                    <form action="{{ url_for('set_currency') }}" method="POST" class="flex items-center space-x-2 bg-white px-3 py-1 rounded-full shadow border border-gray-200">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <i class="fas fa-coins text-yellow-500"></i>
+                        <select name="currency" onchange="this.form.submit()" class="bg-transparent focus:outline-none">
+                            {% for cur in available_currencies %}
+                                <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <a href="{{ url_for('index') }}" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-home mr-1"></i>Accueil
+                    </a>
+                    <a href="{{ url_for('products') }}" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-book mr-1"></i>Produits
+                    </a>
+                    <a href="{{ url_for('about') }}" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-circle-info mr-1"></i>À propos
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('forum') }}" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-comments mr-1"></i>Forum
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Panier: n'afficher que pour les clients (pas pour les admins connectés) -->
+                    {% if not (current_user.is_authenticated and current_user.is_admin) %}
+                    <div class="relative">
+                        <a href="{{ url_for('cart') }}" class="text-gray-600 hover:text-purple-600 transition relative">
+                            <i class="fas fa-shopping-cart text-xl"></i>
+                            {% if cart_count > 0 %}
+                                <span class="cart-badge" aria-label="{{ cart_count }} article(s) dans le panier">{{ cart_count }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Profil Utilisateur -->
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                        <div class="relative group" id="profileDropdown">
+                            <button class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition">
+                                {% set has_pic = current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
+                                {% if has_pic %}
+                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                                     alt="Profile" class="h-8 w-8 rounded-full border-2 border-purple-500 object-cover">
+                                {% else %}
+                                <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 border border-purple-200">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                {% endif %}
+                                <span>{{ current_user.first_name }}</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                <a href="{{ url_for('admin_dashboard') }}" class="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition">
+                                    <i class="fas fa-tools mr-2"></i>Administration
+                                </a>
+                                <a href="{{ url_for('admin_profile') }}" class="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition">
+                                    <i class="fas fa-user-shield mr-2"></i>Profil Administrateur
+                                </a>
+                                <a href="{{ url_for('admin_logout') }}" class="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition border-t">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="relative group" id="profileDropdown">
+                            <button class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition">
+                                {% set has_pic = current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
+                                {% if has_pic %}
+                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                                     alt="Profile" class="h-8 w-8 rounded-full border-2 border-purple-500 object-cover">
+                                {% else %}
+                                <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 border border-purple-200">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                {% endif %}
+                                <span>{{ current_user.first_name }}</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            
+                            <!-- Dropdown Menu -->
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                <a href="{{ url_for('client_profile') }}" class="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition">
+                                    <i class="fas fa-user mr-2"></i>Mon Profil
+                                </a>
+                                <a href="{{ url_for('client_logout') }}" class="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition border-t">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div class="flex items-center space-x-4">
+                        <a href="{{ url_for('client_login') }}" class="text-gray-600 hover:text-purple-600 transition">
+                            <i class="fas fa-sign-in-alt mr-1"></i>Connexion
+                        </a>
+                        <a href="{{ url_for('client_register') }}" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                            <i class="fas fa-user-plus mr-1"></i>S'inscrire
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Menu Mobile -->
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-gray-600 hover:text-purple-600">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Mobile -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white border-t">
+            <div class="px-4 py-3 space-y-3">
+                <a href="{{ url_for('index') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-home mr-2"></i>Accueil
+                </a>
+                <a href="{{ url_for('products') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-book mr-2"></i>Produits
+                </a>
+                <a href="{{ url_for('about') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-circle-info mr-2"></i>À propos
+                </a>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-comments mr-2"></i>Forum
+                </a>
+                {% endif %}
+                {% if not (current_user.is_authenticated and current_user.is_admin) %}
+                <a href="{{ url_for('cart') }}" class="block text-gray-600 hover:text-purple-600 py-2 relative">
+                    <i class="fas fa-shopping-cart mr-2"></i>Panier
+                    {% if cart_count > 0 %}
+                    <span class="cart-badge absolute -top-1 left-16" aria-label="{{ cart_count }} article(s) dans le panier">{{ cart_count }}</span>
+                    {% endif %}
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                        <i class="fas fa-tools mr-2"></i>Administration
+                    </a>
+                    <a href="{{ url_for('admin_profile') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                        <i class="fas fa-user-shield mr-2"></i>Profil Admin
+                    </a>
+                    <a href="{{ url_for('admin_logout') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('client_profile') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                        <i class="fas fa-user mr-2"></i>Mon Profil
+                    </a>
+                    <a href="{{ url_for('client_logout') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                    </a>
+                    {% endif %}
+                {% else %}
+                <a href="{{ url_for('client_login') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Connexion
+                </a>
+                <a href="{{ url_for('client_register') }}" class="block text-gray-600 hover:text-purple-600 py-2">
+                    <i class="fas fa-user-plus mr-2"></i>S'inscrire
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu Principal -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="text-center">
+                <p class="text-gray-300">
+                    © 2025 {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}. Propulsé par Esperdigi. Tous droits réservés.
+                </p>
+                <div class="mt-4 flex justify-center space-x-6">
+                    <a href="#" class="text-gray-300 hover:text-white transition">
+                        <i class="fab fa-facebook text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition">
+                        <i class="fab fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition">
+                        <i class="fab fa-instagram text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Menu Mobile
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        });
+
+        // Fermer le menu mobile en cliquant à l'extérieur
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.getElementById('mobileMenuBtn');
+            
+            if (!menu.contains(event.target) && !btn.contains(event.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Messages flash
+        setTimeout(() => {
+            const flashes = document.querySelectorAll('.flash-message');
+            flashes.forEach(flash => {
+                flash.style.transition = 'opacity 0.5s ease';
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 500);
+            });
+        }, 5000);
+
+        // Géolocalisation : attaché aux boutons portant data-geo-btn
+        function initGeoWidgets() {
+            document.querySelectorAll('[data-geo-btn]').forEach(btn => {
+                if (btn.dataset.geoBound) return;
+                btn.dataset.geoBound = '1';
+                const target = document.getElementById(btn.dataset.geoTarget);
+                const latEl = document.getElementById(btn.dataset.geoLat);
+                const lonEl = document.getElementById(btn.dataset.geoLon);
+                const labelEl = document.getElementById(btn.dataset.geoLabel);
+                const statusEl = document.getElementById(btn.dataset.geoStatus);
+                const mapFrame = document.getElementById(btn.dataset.geoMap);
+                const mapWrapper = mapFrame ? mapFrame.parentElement : null;
+
+                const setStatus = (msg, isError=false) => {
+                    if (!statusEl) return;
+                    statusEl.textContent = msg;
+                    statusEl.className = `text-xs ${isError ? 'text-red-600' : 'text-gray-600'}`;
+                };
+
+                const setCoords = (lat, lon, label='') => {
+                    if (latEl) latEl.value = lat;
+                    if (lonEl) lonEl.value = lon;
+                    if (labelEl) labelEl.value = label || (target ? target.value : '');
+                    if (mapFrame) {
+                        mapFrame.src = `https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+                        mapWrapper && mapWrapper.classList.remove('hidden');
+                    }
+                    setStatus('Position détectée.');
+                };
+
+                btn.addEventListener('click', () => {
+                    if (!navigator.geolocation) {
+                        setStatus('La géolocalisation n’est pas supportée.', true);
+                        return;
+                    }
+                    setStatus('Recherche de votre position...');
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const { latitude, longitude } = pos.coords;
+                            setCoords(latitude.toFixed(6), longitude.toFixed(6));
+                        },
+                        () => setStatus('Impossible de récupérer votre position.', true),
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+                    );
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', initGeoWidgets);
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

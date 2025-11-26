@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 class="text-center text-3xl font-extrabold text-gray-900">
+            Créer votre compte
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            Rejoignez {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
+        </p>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="mb-4 rounded-md {% if category == 'error' %}bg-red-50 border border-red-200{% else %}bg-green-50 border border-green-200{% endif %} p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas {% if category == 'error' %}fa-exclamation-circle text-red-400{% else %}fa-check-circle text-green-400{% endif %}"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium {% if category == 'error' %}text-red-800{% else %}text-green-800{% endif %}">
+                                    {{ message }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form class="space-y-6" action="{{ url_for('client_register') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                    <div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700">
+                            Prénom *
+                        </label>
+                        <div class="mt-1">
+                            <input id="first_name" name="first_name" type="text" required 
+                                   class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                   placeholder="Votre prénom">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700">
+                            Nom *
+                        </label>
+                        <div class="mt-1">
+                            <input id="last_name" name="last_name" type="text" required 
+                                   class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                   placeholder="Votre nom">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">
+                        Adresse email *
+                    </label>
+                    <div class="mt-1">
+                        <input id="email" name="email" type="email" autocomplete="email" required 
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                               placeholder="votre@email.com">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">
+                        Mot de passe *
+                    </label>
+                    <div class="mt-1 relative">
+                        <input id="register_password" name="password" type="password" autocomplete="new-password" required 
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm pr-10"
+                               placeholder="Votre mot de passe">
+                        <button type="button" id="toggleRegisterPassword" class="absolute right-2 top-2 text-gray-500">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">
+                        Minimum 8 caractères avec des chiffres et lettres.
+                    </p>
+                </div>
+
+                <div class="flex items-center">
+                    <input id="agree-terms" name="agree-terms" type="checkbox" required
+                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                    <label for="agree-terms" class="ml-2 block text-sm text-gray-900">
+                        J'accepte les 
+                        <a href="#" class="font-medium text-purple-600 hover:text-purple-500">conditions d'utilisation</a>
+                        et la 
+                        <a href="#" class="font-medium text-purple-600 hover:text-purple-500">politique de confidentialité</a>
+                    </label>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-200">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Créer mon compte
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">
+                            Déjà un compte ?
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <a href="{{ url_for('client_login') }}" class="font-medium text-purple-600 hover:text-purple-500 transition duration-200">
+                        <i class="fas fa-sign-in-alt mr-1"></i>
+                        Se connecter
+                    </a>
+                </div>
+            </div>
+
+            <!-- Avantages -->
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">Pourquoi nous rejoindre ?</h3>
+                <ul class="space-y-3 text-sm text-gray-600">
+                    <li class="flex items-center">
+                        <i class="fas fa-shipping-fast text-green-500 mr-2"></i>
+                        Livraison rapide et gratuite
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-shield-alt text-blue-500 mr-2"></i>
+                        Paiement 100% sécurisé
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-gift text-purple-500 mr-2"></i>
+                        Offres exclusives membres
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-history text-orange-500 mr-2"></i>
+                        Historique de commandes
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const password = document.getElementById('register_password');
+    
+    form.addEventListener('submit', function(e) {
+        const passwordValue = password.value;
+        
+        // Validation basique du mot de passe
+        if (passwordValue.length < 8) {
+            e.preventDefault();
+            alert('Le mot de passe doit contenir au moins 8 caractères');
+            return;
+        }
+        
+        // Vérification des conditions
+        const agreeTerms = document.getElementById('agree-terms');
+        if (!agreeTerms.checked) {
+            e.preventDefault();
+            alert('Veuillez accepter les conditions d\'utilisation');
+            return;
+        }
+    });
+    
+    // Animation des champs
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.classList.add('ring-2', 'ring-purple-500');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.parentElement.classList.remove('ring-2', 'ring-purple-500');
+        });
+    });
+    // Toggle mot de passe
+    const toggleRegister = document.getElementById('toggleRegisterPassword');
+    const registerPwd = document.getElementById('register_password');
+    if (toggleRegister && registerPwd) {
+        toggleRegister.addEventListener('click', function() {
+            if (registerPwd.type === 'password') {
+                registerPwd.type = 'text';
+                toggleRegister.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                registerPwd.type = 'password';
+                toggleRegister.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "basee.html" %}
+
+{% block title %}Commandes - Admin{% endblock %}
+{% block header_title %}Commandes{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="card-surface rounded-lg shadow p-4 border border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-filter text-purple-600"></i>
+            <span class="text-sm text-gray-600">Filtrer par statut</span>
+        </div>
+        <form method="GET" action="{{ url_for('admin_orders') }}" class="flex items-center gap-2">
+            <select name="status" class="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                <option value="">Tous</option>
+                {% for st in ['pending','confirmed','shipped','delivered','cancelled'] %}
+                <option value="{{ st }}" {% if request.args.get('status') == st %}selected{% endif %}>{{ status_fr(st, 'order') }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Appliquer</button>
+        </form>
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-receipt mr-1"></i>Commande</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-user mr-1"></i>Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-coins mr-1"></i>Montant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-info-circle mr-1"></i>Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-clock mr-1"></i>Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-location-dot mr-1"></i>Localisation</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><i class="fas fa-ellipsis-h mr-1"></i>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for order in orders %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ order.order_number }}</div>
+                            <div class="text-xs text-gray-500">{{ order.items|length }} article(s)</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ order.customer.first_name }} {{ order.customer.last_name }}</div>
+                            <div class="text-sm text-gray-500">{{ order.customer.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ convert_price(order.total_amount, from_currency=base_currency) }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <form action="{{ url_for('admin_update_order_status', order_id=order.id) }}" method="POST" class="flex items-center gap-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <select name="status" class="px-2 py-1 border rounded text-sm">
+                                    {% for status in ['pending','confirmed','shipped','delivered','cancelled'] %}
+                                    <option value="{{ status }}" {% if order.status == status %}selected{% endif %}>{{ status_fr(status, 'order') }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="text-purple-600 hover:text-purple-800 text-sm">Appliquer</button>
+                            </form>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if order.shipping_latitude and order.shipping_longitude %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Coordonnées OK</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500">Aucune</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-3">
+                                {% if current_user.has_permission('manage_orders') or current_user.is_super_admin %}
+                                <a href="{{ url_for('admin_download_invoice', order_id=order.id) }}" class="text-red-600 hover:text-red-900 currency-prompt-download" title="Facture">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                                {% else %}
+                                <span class="inactive-feature text-gray-400 cursor-not-allowed"><i class="fas fa-file-pdf"></i></span>
+                                {% endif %}
+                                <a class="text-green-600 hover:text-green-900" title="Voir Détails" href="{{ url_for('admin_order_detail', order_id=order.id) }}">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if orders|length == 0 %}
+        <div class="text-center py-12 text-gray-500">Aucune commande trouvée.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const currencies = {{ available_currencies|tojson|safe }};
+    const defaultCurrency = "{{ (current_currency or base_currency)|upper }}";
+    const normalize = (val) => (val || '').trim().toUpperCase();
+
+    document.querySelectorAll('.currency-prompt-download').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            if (!href) return;
+            const choice = prompt(`Choisissez la devise pour la facture (${currencies.join(', ')})`, defaultCurrency);
+            if (!choice) return;
+            const code = normalize(choice);
+            if (!currencies.map(normalize).includes(code)) {
+                alert('Devise non supportée.');
+                return;
+            }
+            const separator = href.includes('?') ? '&' : '?';
+            window.location.href = `${href}${separator}currency=${encodeURIComponent(code)}`;
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Mes commandes{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Mes commandes</h1>
+    <div class="bg-white rounded-xl shadow divide-y">
+        {% for order in orders %}
+        <div class="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <p class="text-sm text-gray-500">Commande {{ order.order_number }}</p>
+                <p class="text-lg font-semibold text-gray-900">{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p class="text-sm text-gray-500">Statut : {{ order.status }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-lg font-bold text-purple-700">{{ convert_price(order.total_amount, from_currency=base_currency) }}</p>
+                <a href="{{ url_for('order_confirmation', order_id=order.id) }}" class="inline-block mt-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Voir la commande</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            Aucune commande pour le moment.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

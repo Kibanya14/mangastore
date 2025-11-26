@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Produits - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    {% set price_currency = shop_settings.currency if shop_settings else base_currency %}
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Notre Collection</h1>
+    <p class="text-gray-600 mb-8">Découvrez tous nos mangas et produits dérivés</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Sidebar Filtres -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6 sticky top-4">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Filtres</h3>
+                
+                <!-- Catégories -->
+                <div class="mb-6">
+                    <h4 class="font-medium text-gray-700 mb-3">Catégories</h4>
+                    <div class="space-y-2">
+                        <a href="{{ url_for('products') }}" 
+                           class="block text-purple-600 font-semibold hover:text-purple-700 transition">
+                            Tous les produits
+                        </a>
+                        {% for category in categories %}
+                        <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
+                           class="block text-gray-600 hover:text-purple-600 transition pl-2 border-l-2 border-transparent hover:border-purple-500">
+                            {{ category.name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Statut Stock -->
+                <div class="mb-6">
+                    <h4 class="font-medium text-gray-700 mb-3">Disponibilité</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" class="text-purple-600 focus:ring-purple-500">
+                            <span class="text-gray-600">En stock</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" class="text-purple-600 focus:ring-purple-500">
+                            <span class="text-gray-600">Pré-commande</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Prix -->
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-3">Prix</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="price" class="text-purple-600 focus:ring-purple-500">
+                            <span class="text-gray-600">Tous les prix</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="price" class="text-purple-600 focus:ring-purple-500">
+                            <span class="text-gray-600">Moins de {{ convert_price(20, from_currency=price_currency) }}</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="price" class="text-purple-600 focus:ring-purple-500">
+                            <span class="text-gray-600">{{ convert_price(20, from_currency=price_currency) }} - {{ convert_price(50, from_currency=price_currency) }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des Produits -->
+        <div class="lg:col-span-3">
+            <!-- En-tête -->
+            <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-800">Produits</h2>
+                        <p class="text-gray-600">{{ products|length }} produit(s) trouvé(s)</p>
+                    </div>
+                    <form method="GET" action="{{ url_for('products') }}" class="flex items-center gap-2 w-full lg:w-auto">
+                        <input type="text" name="q" value="{{ search_term }}" placeholder="Rechercher par nom ou description..."
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        {% if request.args.get('category_id') %}
+                        <input type="hidden" name="category_id" value="{{ request.args.get('category_id') }}">
+                        {% endif %}
+                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Grille Produits -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for product in products %}
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover-scale border border-gray-200">
+                    <!-- Image Produit -->
+                    <div class="h-48 bg-gray-200 relative overflow-hidden flex items-center justify-center">
+                        {% set img = get_first_image_url(product) %}
+                        {% if img %}
+                        <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <i class="fas fa-book text-gray-400 text-6xl"></i>
+                        {% endif %}
+                        <div class="absolute top-3 right-3">
+                            {% if product.quantity > 0 %}
+                            <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                En stock
+                            </span>
+                            {% else %}
+                            <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                Rupture
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Infos Produit -->
+                    <div class="p-4">
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="font-semibold text-lg text-gray-800 mb-2 hover:text-purple-700 block">
+                            {{ product.name }}
+                        </a>
+                        <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description or 'Description du produit' }}</p>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-xl font-bold text-purple-600">{{ convert_price(product.price, from_currency=price_currency) }}</span>
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                Stock: {{ product.quantity }}
+                            </span>
+                        </div>
+
+                        <!-- Actions -->
+                        {% if current_user.is_authenticated and not current_user.is_admin and product.quantity > 0 %}
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="flex items-center space-x-2">
+                                <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" 
+                                       class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm">
+                                <button type="submit" 
+                                        class="flex-1 bg-purple-600 text-white py-2 px-3 rounded-lg hover:bg-purple-700 transition flex items-center justify-center space-x-1 text-sm">
+                                    <i class="fas fa-cart-plus"></i>
+                                    <span>Ajouter</span>
+                                </button>
+                            </div>
+                        </form>
+                        {% elif not current_user.is_authenticated %}
+                        <a href="{{ url_for('client_login') }}" 
+                           class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center text-sm">
+                            Se connecter
+                        </a>
+                        {% elif current_user.is_admin %}
+                        <div class="text-center text-xs text-gray-500 py-2 border-t">
+                            Mode administration
+                        </div>
+                        {% else %}
+                        <button disabled 
+                                class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed text-sm">
+                            Indisponible
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-span-3 text-center py-16">
+                    <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                    <h3 class="text-xl font-medium text-gray-600 mb-2">Aucun produit trouvé</h3>
+                    <p class="text-gray-500 mb-6">Essayez de modifier vos critères de recherche</p>
+                    <a href="{{ url_for('products') }}" 
+                       class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition">
+                        Voir tous les produits
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if products|length > 0 %}
+            <div class="flex justify-center items-center space-x-2 mt-8">
+                <button class="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="px-3 py-2 bg-purple-600 text-white rounded-lg">1</button>
+                <button class="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">2</button>
+                <button class="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">3</button>
+                <button class="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filtres interactifs
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                // Simuler le filtrage
+                console.log('Filtre modifié:', this.checked);
+            });
+        });
+    });
+</script>
+{% endblock %}

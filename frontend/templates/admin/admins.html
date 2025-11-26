@@ -1,0 +1,239 @@
+{% extends "basee.html" %}
+
+{% block title %}Administrateurs - Admin{% endblock %}
+{% block header_title %}Gestion des administrateurs{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- En-tête / Actions -->
+    <div class="bg-white rounded-lg shadow-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-gray-200">
+        <div>
+            <h3 class="text-xl font-semibold text-gray-800">Administrateurs</h3>
+            <p class="text-sm text-gray-600">{{ admins|length }} administrateur(s)</p>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" id="toggleAdminForm" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                <i class="fas fa-user-plus"></i><span>Ajouter</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Formulaire ajout -->
+    <div id="adminForm" class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hidden">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Ajouter un administrateur</h3>
+        <form action="{{ url_for('admin_add_admin') }}" method="POST" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                <input type="text" name="first_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                <input type="text" name="last_name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input type="email" name="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                <div class="relative">
+                    <input type="password" name="password" id="adminPasswordInput" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 pr-12">
+                    <button type="button" id="toggleAdminPassword" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-purple-600">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="md:col-span-2 lg:col-span-4">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Permissions</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="view_products" class="text-purple-600 focus:ring-purple-500"> <span>Voir produits</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_products" class="text-purple-600 focus:ring-purple-500"> <span>Gérer produits</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="view_orders" class="text-purple-600 focus:ring-purple-500"> <span>Voir commandes</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_orders" class="text-purple-600 focus:ring-purple-500"> <span>Gérer commandes</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="view_categories" class="text-purple-600 focus:ring-purple-500"> <span>Voir catégories</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_categories" class="text-purple-600 focus:ring-purple-500"> <span>Gérer catégories</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_admins" class="text-purple-600 focus:ring-purple-500"> <span>Gérer admins</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_deliverers" class="text-purple-600 focus:ring-purple-500"> <span>Gérer livreurs</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm text-gray-700">
+                        <input type="checkbox" name="permissions" value="manage_settings" class="text-purple-600 focus:ring-purple-500"> <span>Gérer paramètres</span>
+                    </label>
+                </div>
+            </div>
+            <div class="md:col-span-2 lg:col-span-4 flex justify-end pt-4">
+                <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2">
+                    <i class="fas fa-user-plus"></i><span>Créer l'administrateur</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des admins -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Liste des administrateurs</h3>
+            <p class="text-sm text-gray-600 mt-1">{{ admins|length }} administrateur(s)</p>
+        </div>
+        
+        {% if admins %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><i class="fas fa-user-shield mr-1"></i>Administrateur</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><i class="fas fa-envelope mr-1"></i>Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><i class="fas fa-id-badge mr-1"></i>Rôle</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><i class="fas fa-clock mr-1"></i>Date création</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><i class="fas fa-ellipsis-h mr-1"></i>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for admin in admins %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="h-10 w-10 flex-shrink-0">
+                                    {% if admin.profile_picture %}
+                                    <img class="h-10 w-10 rounded-full object-cover" src="{{ url_for('static', filename='uploads/profiles/' + admin.profile_picture) }}" alt="{{ admin.first_name }}">
+                                    {% else %}
+                                    <div class="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-purple-600"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ admin.first_name }} {{ admin.last_name }}</div>
+                                    <div class="text-xs text-gray-500">Créé le {{ admin.created_at.strftime('%d/%m/%Y') if admin.created_at else '' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-700">{{ admin.email }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700">
+                            {% if admin.is_super_admin %}<span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">Super Admin</span>{% else %}Admin{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ admin.created_at.strftime('%d/%m/%Y %H:%M') if admin.created_at else '' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700">
+                            <div class="flex items-center space-x-2">
+                                {% set can_manage = current_user.is_super_admin or current_user.has_permission('manage_admins') %}
+                                {% if can_manage %}
+                                    <a href="{{ url_for('admin_view_admin', user_id=admin.id) }}" class="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1">
+                                        <i class="fas fa-eye"></i><span>Voir</span>
+                                    </a>
+                                    {% if not admin.is_super_admin %}
+                                        <button type="button" class="px-3 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200 toggle-edit" data-target="edit-{{ admin.id }}">
+                                            <i class="fas fa-edit"></i><span>Modifier</span>
+                                        </button>
+                                        <form action="{{ url_for('admin_delete_admin', user_id=admin.id) }}" method="POST" onsubmit="return confirm('Supprimer cet administrateur ?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="px-3 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200 flex items-center gap-1">
+                                                <i class="fas fa-trash-alt"></i><span>Supprimer</span>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button type="button" class="px-3 py-1 text-xs rounded bg-blue-50 text-blue-300 cursor-not-allowed" disabled>
+                                            <i class="fas fa-edit"></i><span>Modifier</span>
+                                        </button>
+                                        <button type="button" class="px-3 py-1 text-xs rounded bg-red-50 text-red-300 cursor-not-allowed" disabled>
+                                            <i class="fas fa-trash-alt"></i><span>Supprimer</span>
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-500">Lecture seule</span>
+                                {% endif %}
+                            </div>
+                            {% if can_manage and not admin.is_super_admin %}
+                            {% set should_open = request.args.get('edit') == admin.id|string %}
+                            <div id="edit-{{ admin.id }}" class="mt-2 {% if not should_open %}hidden{% endif %} bg-gray-50 rounded border border-gray-200 p-3">
+                                <form action="{{ url_for('admin_edit_admin', user_id=admin.id) }}" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="text" name="first_name" value="{{ admin.first_name }}" class="px-2 py-1 border rounded" placeholder="Prénom">
+                                    <input type="text" name="last_name" value="{{ admin.last_name }}" class="px-2 py-1 border rounded" placeholder="Nom">
+                                    <input type="email" name="email" value="{{ admin.email }}" class="px-2 py-1 border rounded" placeholder="Email">
+                                    <input type="text" name="phone" value="{{ admin.phone or '' }}" class="px-2 py-1 border rounded" placeholder="Téléphone">
+                                    <div class="md:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {% set perms = admin.permissions.split(',') if admin.permissions else [] %}
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="view_products" {% if 'view_products' in perms %}checked{% endif %}> <span>Voir produits</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_products" {% if 'manage_products' in perms %}checked{% endif %}> <span>Gérer produits</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="view_orders" {% if 'view_orders' in perms %}checked{% endif %}> <span>Voir commandes</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_orders" {% if 'manage_orders' in perms %}checked{% endif %}> <span>Gérer commandes</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="view_categories" {% if 'view_categories' in perms %}checked{% endif %}> <span>Voir catégories</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_categories" {% if 'manage_categories' in perms %}checked{% endif %}> <span>Gérer catégories</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_admins" {% if 'manage_admins' in perms %}checked{% endif %}> <span>Gérer admins</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_deliverers" {% if 'manage_deliverers' in perms %}checked{% endif %}> <span>Gérer livreurs</span></label>
+                                        <label class="inline-flex items-center space-x-1"><input type="checkbox" name="permissions" value="manage_settings" {% if 'manage_settings' in perms %}checked{% endif %}> <span>Gérer paramètres</span></label>
+                                    </div>
+                                    <div class="md:col-span-2 flex justify-end">
+                                        <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Enregistrer</button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-6 text-gray-500">Aucun administrateur trouvé.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const toggleBtn = document.getElementById('toggleAdminForm');
+    const formEl = document.getElementById('adminForm');
+    if (toggleBtn && formEl) {
+        toggleBtn.addEventListener('click', () => formEl.classList.toggle('hidden'));
+    }
+    document.querySelectorAll('.toggle-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (target) target.classList.toggle('hidden');
+        });
+    });
+
+    const togglePwd = document.getElementById('toggleAdminPassword');
+    const pwdInput = document.getElementById('adminPasswordInput');
+    if (togglePwd && pwdInput) {
+        togglePwd.addEventListener('click', () => {
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                togglePwd.textContent = 'Cacher';
+            } else {
+                pwdInput.type = 'password';
+                togglePwd.textContent = 'Afficher';
+            }
+        });
+    }
+
+    // Si on arrive avec ?edit=ID, ouvrir le panneau de modification correspondant
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (editId) {
+        const panel = document.getElementById(`edit-${editId}`);
+        if (panel) {
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+</script>
+{% endblock %}

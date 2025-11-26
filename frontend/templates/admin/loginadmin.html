@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Admin - Manga Store</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4 relative">
+    <div class="max-w-md w-full">
+        <!-- Carte de connexion -->
+        <div class="login-card rounded-2xl shadow-2xl p-8 text-white">
+            <!-- En-tête -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                    {% if shop_settings and shop_settings.admin_logo %}
+                    <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.admin_logo) }}" alt="Logo admin" class="w-full h-full object-cover">
+                    {% else %}
+                    <i class="fas fa-book text-purple-600 text-3xl"></i>
+                    {% endif %}
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Espace Admin</h1>
+                <p class="opacity-80">Connectez-vous pour gérer votre boutique</p>
+            </div>
+
+            <!-- Messages Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-500{% else %}bg-green-500{% endif %} text-white flash-message">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Formulaire -->
+            <form action="{{ url_for('admin_login') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="space-y-6">
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email Administrateur</label>
+                        <div class="relative">
+                            <input type="email" name="email" required 
+                                   class="w-full px-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 pl-12">
+                            <i class="fas fa-envelope absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-opacity-60"></i>
+                        </div>
+                    </div>
+
+                    <!-- Mot de passe -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Mot de passe</label>
+                              <div class="relative">
+                                <input id="admin_login_password" type="password" name="password" required 
+                                    class="w-full px-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 pl-12 pr-10">
+                                <i class="fas fa-lock absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-opacity-60"></i>
+                                <button type="button" id="toggleAdminLoginPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-white text-opacity-80">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                               </div>
+                    </div>
+
+                    <!-- Bouton -->
+                    <button type="submit" 
+                            class="w-full bg-white text-purple-600 py-3 px-4 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 flex items-center justify-center space-x-2">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Se Connecter</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Lien retour -->
+            <div class="text-center mt-6">
+                <a href="{{ url_for('index') }}" class="text-white opacity-80 hover:opacity-100 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Retour à la boutique</span>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer fixe -->
+    <footer class="text-center text-white opacity-60 text-xs px-4 absolute inset-x-0 bottom-4">
+        <p>© Manga Store Administration, Propulsé par Esperdigi - Tout droit réservé.</p>
+    </footer>
+
+    <script>
+        // Auto-suppression des messages flash après 5 secondes
+        setTimeout(() => {
+            const flashes = document.querySelectorAll('.flash-message');
+            flashes.forEach(flash => {
+                flash.style.transition = 'opacity 0.5s ease';
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 500);
+            });
+        }, 5000);
+
+        // Toggle mot de passe admin
+        const toggleAdminLogin = document.getElementById('toggleAdminLoginPassword');
+        const adminPwd = document.getElementById('admin_login_password');
+        if (toggleAdminLogin && adminPwd) {
+            toggleAdminLogin.addEventListener('click', function() {
+                if (adminPwd.type === 'password') {
+                    adminPwd.type = 'text';
+                    toggleAdminLogin.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                } else {
+                    adminPwd.type = 'password';
+                    toggleAdminLogin.innerHTML = '<i class="fas fa-eye"></i>';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

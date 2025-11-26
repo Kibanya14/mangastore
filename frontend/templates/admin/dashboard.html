@@ -1,0 +1,62 @@
+{% extends "basee.html" %}
+
+{% block title %}Dashboard - Admin{% endblock %}
+{% block header_title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card-surface rounded-lg shadow p-4 border border-gray-100">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-box-open text-purple-600"></i>Produits</p>
+            <p class="text-2xl font-bold text-purple-700">{{ stats.total_products }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow p-4 border border-gray-100">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-shopping-cart text-blue-600"></i>Commandes</p>
+            <p class="text-2xl font-bold text-blue-700">{{ stats.total_orders }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow p-4 border border-gray-100">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-users text-green-600"></i>Clients</p>
+            <p class="text-2xl font-bold text-green-700">{{ stats.total_users }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow p-4 border border-gray-100">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-coins text-amber-600"></i>Chiffre d'affaires</p>
+            <p class="text-2xl font-bold text-amber-700">{{ convert_price(stats.total_revenue or 0, from_currency=base_currency) }}</p>
+        </div>
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100">
+        <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="font-semibold text-gray-800">Commandes récentes</h3>
+            <a href="{{ url_for('admin_orders') }}" class="text-sm text-purple-600 hover:text-purple-700">Voir toutes</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Commande</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Client</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Montant</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Statut</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for order in recent_orders %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ order.order_number }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ order.customer.first_name }} {{ order.customer.last_name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ convert_price(order.total_amount, from_currency=base_currency) }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ order.status }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500">{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="px-4 py-3 text-sm text-center text-gray-500">Aucune commande récente.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

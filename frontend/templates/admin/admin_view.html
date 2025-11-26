@@ -1,0 +1,108 @@
+{% extends "basee.html" %}
+
+{% block title %}Détails Admin{% endblock %}
+{% block header_title %}Administrateur{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="h-14 w-14 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden">
+                {% if admin_user.profile_picture %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' + admin_user.profile_picture) }}" alt="Profil" class="w-full h-full object-cover">
+                {% else %}
+                <i class="fas fa-user text-purple-600"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900">{{ admin_user.first_name }} {{ admin_user.last_name }}</h2>
+                <p class="text-sm text-gray-600">{{ admin_user.email }}</p>
+                <p class="text-xs text-gray-500">Créé le {{ admin_user.created_at.strftime('%d/%m/%Y %H:%M') if admin_user.created_at else '' }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('admin_manage_admins') }}" class="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Retour</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-id-badge text-purple-600"></i>Rôle</p>
+            <p class="text-lg font-semibold text-purple-700">{{ 'Super Admin' if admin_user.is_super_admin else 'Admin' }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-paper-plane text-blue-600"></i>Demandes créées</p>
+            <p class="text-lg font-semibold text-blue-700">{{ activity_summary.access_requests_created }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-check-circle text-green-600"></i>Demandes traitées</p>
+            <p class="text-lg font-semibold text-green-700">{{ activity_summary.access_requests_processed }}</p>
+        </div>
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-key text-purple-600"></i>Permissions</h3>
+        {% set perms = admin_user.permissions.split(',') if admin_user.permissions else [] %}
+        {% if perms %}
+        <div class="flex flex-wrap gap-2">
+            {% for p in perms %}
+            <span class="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs border border-purple-100">{{ p }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Aucune permission spécifique.</p>
+        {% endif %}
+    </div>
+
+    {% if admin_user.is_super_admin %}
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-shield-alt text-purple-600"></i>Accès</h3>
+        <p class="text-sm text-gray-600">Super admin : toutes les permissions sont déjà accordées, aucune demande requise.</p>
+    </div>
+    {% else %}
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-paper-plane text-blue-600"></i>Demandes d'accès envoyées</h3>
+        {% if created_requests %}
+        <div class="divide-y">
+            {% for req in created_requests %}
+            <div class="py-3">
+                {% set req_perms = (req.feature or '').replace('|', ',').split(',') %}
+                <div class="flex flex-wrap gap-1 mb-1">
+                    {% for p in req_perms if p.strip() %}
+                    <span class="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-100">{{ permission_labels.get(p.strip(), p.strip()) }}</span>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-gray-500">Statut: {{ status_fr(req.status) }} — {{ req.created_at.strftime('%d/%m/%Y %H:%M') if req.created_at else '' }}</p>
+                {% if req.message %}<p class="text-sm text-gray-600 mt-1">{{ req.message }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Aucune demande envoyée.</p>
+        {% endif %}
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-clipboard-check text-green-600"></i>Demandes d'accès traitées</h3>
+        {% if processed_requests %}
+        <div class="divide-y">
+            {% for req in processed_requests %}
+            <div class="py-3">
+                {% set req_perms = (req.feature or '').replace('|', ',').split(',') %}
+                <div class="flex flex-wrap gap-1 mb-1">
+                    {% for p in req_perms if p.strip() %}
+                    <span class="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-100">{{ permission_labels.get(p.strip(), p.strip()) }}</span>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-gray-500">Statut: {{ status_fr(req.status) }} — {{ req.processed_at.strftime('%d/%m/%Y %H:%M') if req.processed_at else '' }}</p>
+                {% if req.response_message %}<p class="text-sm text-gray-600 mt-1">{{ req.response_message }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Aucune demande traitée.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

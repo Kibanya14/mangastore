@@ -1,0 +1,104 @@
+{% extends "basee.html" %}
+
+{% block title %}Livreur - {{ deliverer.first_name }}{% endblock %}
+{% block header_title %}Détails Livreur{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center overflow-hidden">
+                {% if deliverer.profile_picture %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' + deliverer.profile_picture) }}" alt="Profil" class="w-full h-full object-cover">
+                {% else %}
+                <i class="fas fa-truck text-emerald-600"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900">{{ deliverer.first_name }} {{ deliverer.last_name }}</h2>
+                <p class="text-sm text-gray-600">{{ deliverer.email }}</p>
+                <p class="text-xs text-gray-500">Créé le {{ deliverer.created_at.strftime('%d/%m/%Y %H:%M') if deliverer.created_at else '' }}</p>
+            </div>
+        </div>
+        <div class="space-y-1 text-right">
+            <p class="text-sm text-gray-500">Commission due</p>
+            <p class="text-2xl font-bold text-emerald-700">{{ convert_price(deliverer.commission_due or 0, from_currency=base_currency) }}</p>
+            <p class="text-xs text-gray-500"><i class="fas fa-signal mr-1"></i>Statut: {{ status_fr(deliverer.status, 'deliverer') }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-truck text-emerald-600"></i>Livraisons (total)</p>
+            <p class="text-lg font-semibold text-gray-900">{{ assignments|length }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-check-circle text-green-600"></i>Livraisons livrées</p>
+            <p class="text-lg font-semibold text-green-700">{{ assignments|selectattr('status', 'equalto', 'delivered')|list|length }}</p>
+        </div>
+        <div class="card-surface rounded-lg shadow border border-gray-100 p-4">
+            <p class="text-sm text-gray-500 flex items-center gap-2"><i class="fas fa-piggy-bank text-amber-600"></i>Payout en attente</p>
+            <p class="text-lg font-semibold text-amber-700">{{ pending_payout|length }}</p>
+        </div>
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Historique des livraisons / commissions</h3>
+            <form action="{{ url_for('admin_payout_deliverer', deliverer_id=deliverer.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">Marquer commission payée</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-receipt mr-1"></i>Commande</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-info-circle mr-1"></i>Statut</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-coins mr-1"></i>Payout</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-clock mr-1"></i>Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for a in assignments %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm text-gray-800">{{ a.order.order_number if a.order else 'Commande' }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ status_fr(a.status, 'assignment') }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs {% if a.payout_status == 'paid' %}bg-green-100 text-green-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                {% if a.payout_status == 'paid' %}Payée{% else %}En attente{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500">{{ a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="px-4 py-3 text-sm text-center text-gray-500">Aucune livraison.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card-surface rounded-lg shadow border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">Commissions payées</h3>
+        {% if paid_assignments %}
+        <div class="divide-y">
+            {% for a in paid_assignments %}
+            <div class="py-3 flex items-center justify-between text-sm">
+                <div>
+                    <p class="font-semibold text-gray-800">{{ a.order.order_number if a.order else 'Commande' }}</p>
+                    <p class="text-xs text-gray-500">{{ a.completed_at.strftime('%d/%m/%Y %H:%M') if a.completed_at else '' }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs">Payé (3.5$)</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Aucune commission payée pour le moment.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

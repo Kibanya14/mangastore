@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Panier - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+{% set base_shipping = shop_settings.shipping_cost or 0 %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Votre Panier</h1>
+
+    {% if cart_items %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Articles du Panier -->
+        <div class="lg:col-span-2 space-y-4">
+            {% for item in cart_items %}
+            <div class="bg-white rounded-xl shadow-md p-6 flex items-center space-x-4 border border-gray-200">
+                <!-- Image Produit -->
+                <div class="flex-shrink-0">
+                    {% set img = get_first_image_url(item.product) %}
+                    {% if img %}
+                    <img src="{{ img }}" alt="{{ item.product.name }}" class="h-20 w-20 object-cover rounded-lg">
+                    {% else %}
+                    <div class="h-20 w-20 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-book text-purple-600 text-2xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Infos Produit -->
+                <div class="flex-1">
+                    <h3 class="font-semibold text-lg text-gray-800">{{ item.product.name }}</h3>
+                    <p class="text-gray-600 text-sm mt-1">{{ item.product.description[:100] }}...</p>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-xl font-bold text-purple-600">{{ convert_price(item.product.price, from_currency=base_currency) }}</span>
+                        <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            Stock: {{ item.product.quantity }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Quantité et Actions -->
+                <div class="flex flex-col items-end space-y-2">
+                    <form action="{{ url_for('update_cart', item_id=item.id) }}" method="POST" class="flex items-center space-x-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.product.quantity }}" 
+                               class="w-16 px-2 py-1 border border-gray-300 rounded text-center">
+                        <button type="submit" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </form>
+                    
+                    <form action="{{ url_for('update_cart', item_id=item.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="quantity" value="0">
+                        <button type="submit" class="text-red-600 hover:text-red-800 transition flex items-center space-x-1">
+                            <i class="fas fa-trash"></i>
+                            <span>Supprimer</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Récapitulatif -->
+        <div class="bg-white rounded-xl shadow-md p-6 h-fit sticky top-4 border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Récapitulatif</h3>
+            
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-gray-600">
+                    <span>Sous-total</span>
+                    <span>{{ convert_price(total, from_currency=base_currency) }}</span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                    <span>Livraison</span>
+                    <span>{% if base_shipping %}{{ convert_price(base_shipping, from_currency=base_currency) }}{% else %}Gratuite{% endif %}</span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                    <span>TVA</span>
+                    <span>Incluse</span>
+                </div>
+                <hr class="my-2">
+                <div class="flex justify-between text-lg font-bold text-gray-800">
+                    <span>Total (hors livraison)</span>
+                    <span>{{ convert_price(total, from_currency=base_currency) }}</span>
+                </div>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('checkout') }}" 
+               class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 transition duration-300 flex items-center justify-center space-x-2">
+                <i class="fas fa-lock"></i>
+                <span>Procéder au Paiement</span>
+            </a>
+            {% else %}
+            <a href="{{ url_for('client_login', next=url_for('checkout')) }}" 
+               class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 transition duration-300 flex items-center justify-center space-x-2">
+                <i class="fas fa-lock"></i>
+                <span>Procéder au Paiement</span>
+            </a>
+            {% endif %}
+
+            <div class="mt-4 text-center">
+                <a href="{{ url_for('products') }}" 
+                   class="text-purple-600 hover:text-purple-700 transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Continuer mes achats</span>
+                </a>
+            </div>
+
+            <!-- Sécurités -->
+            <div class="mt-6 space-y-3 text-sm text-gray-600">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span>Paiement 100% sécurisé</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-truck text-blue-500"></i>
+                    <span>Livraison</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-undo text-orange-500"></i>
+                    <span>Retours sous 30 jours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Panier Vide -->
+    <div class="text-center py-16">
+        <div class="bg-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-shopping-cart text-purple-600 text-4xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Votre panier est vide</h2>
+        <p class="text-gray-600 mb-8 max-w-md mx-auto">
+            Explorez notre collection de mangas et découvrez des produits exceptionnels qui attendent d'être ajoutés à votre panier.
+        </p>
+        <a href="{{ url_for('products') }}" 
+           class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition duration-300 inline-flex items-center space-x-2">
+            <i class="fas fa-book"></i>
+            <span>Découvrir nos produits</span>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Mise à jour en temps réel de la quantité
+    document.querySelectorAll('input[name="quantity"]').forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value > parseInt(this.getAttribute('max'))) {
+                this.value = this.getAttribute('max');
+                alert('Quantité maximale disponible: ' + this.getAttribute('max'));
+            }
+        });
+    });
+</script>
+{% endblock %}

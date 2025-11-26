@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmation Commande - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-12">
+    <!-- En-tête Confirmation -->
+    <div class="text-center mb-12">
+        <div class="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-check-circle text-green-600 text-4xl"></i>
+        </div>
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">Commande Confirmée !</h1>
+        <p class="text-xl text-gray-600 mb-2">Merci pour votre achat, {{ current_user.first_name }} !</p>
+        <p class="text-gray-500">Votre commande a été enregistrée avec succès.</p>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Détails Commande -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Résumé Commande -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-green-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-receipt text-green-600"></i>
+                    <span>Résumé de la Commande</span>
+                </h3>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200">
+                        <span class="text-gray-600">Numéro de commande</span>
+                        <span class="font-semibold text-gray-800">{{ order.order_number }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200">
+                        <span class="text-gray-600">Date de commande</span>
+                        <span class="font-semibold text-gray-800">{{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+                    </div>
+                    
+                    {% set status = order.status|default('pending') %}
+                    {% set badge = {
+                        'pending': ('En attente', 'bg-yellow-100 text-yellow-800'),
+                        'confirmed': ('Confirmée', 'bg-blue-100 text-blue-800'),
+                        'shipped': ('Expédiée', 'bg-indigo-100 text-indigo-800'),
+                        'delivered': ('Livrée', 'bg-green-100 text-green-800'),
+                        'cancelled': ('Annulée', 'bg-red-100 text-red-800')
+                    }.get(status, ('En traitement', 'bg-gray-100 text-gray-700')) %}
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200">
+                        <span class="text-gray-600">Statut</span>
+                        <span class="px-3 py-1 {{ badge[1] }} rounded-full text-sm font-semibold">
+                            {{ badge[0] }}
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3">
+                        <span class="text-gray-600">Montant total</span>
+                        <span class="text-2xl font-bold text-green-600">{{ convert_price(order.total_amount, from_currency=base_currency) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Articles Commandés -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Articles Commandés</h3>
+                
+                <div class="space-y-4">
+                    {% for item in order.items %}
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            {% set first_image = item.product.images.split('|')[0] if item.product and item.product.images else None %}
+                            {% if first_image %}
+                                {% if first_image.startswith('http') %}
+                                <img src="{{ first_image }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
+                                {% else %}
+                                <img src="{{ url_for('static', filename='uploads/products/' + first_image) }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
+                                {% endif %}
+                            {% else %}
+                                <div class="h-16 w-16 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-book text-purple-600"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h4 class="font-medium text-gray-800">{{ item.product.name if item.product else 'Produit supprimé' }}</h4>
+                                <p class="text-sm text-gray-600">Quantité: {{ item.quantity }}</p>
+                            </div>
+                        </div>
+                        <span class="font-semibold text-gray-800">{{ convert_price(item.price * item.quantity, from_currency=base_currency) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Adresse Livraison -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-truck text-blue-600"></i>
+                    <span>Adresse de Livraison</span>
+                </h3>
+                
+                <div class="space-y-2 text-gray-600">
+                    <p class="font-medium">{{ current_user.first_name }} {{ current_user.last_name }}</p>
+                    <p>{{ order.shipping_address }}</p>
+                    <p>{{ current_user.email }}</p>
+                    {% if current_user.phone %}
+                    <p>{{ current_user.phone }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions & Informations -->
+        <div class="space-y-6">
+            <!-- Télécharger Facture -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Votre Facture</h3>
+                <p class="text-gray-600 mb-4 text-sm">
+                    Téléchargez votre facture proforma pour vos archives.
+                </p>
+                {% if order.status == 'delivered' %}
+                <a href="{{ url_for('client_download_invoice', order_id=order.id) }}" 
+                   class="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-red-700 transition flex items-center justify-center space-x-2 currency-prompt-download">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Télécharger la Facture</span>
+                </a>
+                {% else %}
+                <button disabled class="w-full bg-gray-300 text-white py-3 px-4 rounded-lg font-semibold cursor-not-allowed flex items-center justify-center space-x-2">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Disponible après livraison</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Prochaines Étapes -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-blue-800 mb-4">Prochaines Étapes</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-blue-100 text-blue-600 rounded-full p-2">
+                            <i class="fas fa-envelope text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-blue-800">Email de confirmation</p>
+                            <p class="text-sm text-blue-600">Envoyé à {{ current_user.email }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-blue-100 text-blue-600 rounded-full p-2">
+                            <i class="fas fa-clock text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-blue-800">Traitement</p>
+                            <p class="text-sm text-blue-600">Préparation sous 24h</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-blue-100 text-blue-600 rounded-full p-2">
+                            <i class="fas fa-shipping-fast text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-blue-800">Livraison</p>
+                            <p class="text-sm text-blue-600">3-5 jours ouvrables</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support -->
+            <div class="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-purple-800 mb-4">Besoin d'aide ?</h3>
+                <p class="text-purple-700 text-sm mb-4">
+                    Notre équipe de support est là pour vous aider.
+                </p>
+                <div class="space-y-2">
+                    <a href="mailto:{{ shop_settings.shop_email if shop_settings else 'support@mangastore.com' }}" 
+                       class="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition">
+                        <i class="fas fa-envelope"></i>
+                        <span>Nous contacter</span>
+                    </a>
+                    <a href="{{ url_for('index') }}" 
+                       class="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition">
+                        <i class="fas fa-store"></i>
+                        <span>Retour à la boutique</span>
+                    </a>
+                </div>
+                {% if order.status == 'delivered' %}
+                <div class="mt-6 text-center">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={{ 'Commande ' ~ order.order_number ~ ' - Total ' ~ order.total_amount ~ ' - Statut delivered' }}" alt="QR Code commande" class="mx-auto">
+                    <p class="text-xs text-gray-500 mt-2">QR Code de votre commande</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Suivantes -->
+    <div class="text-center mt-12 pt-8 border-t border-gray-200">
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="{{ url_for('products') }}" 
+               class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition inline-flex items-center justify-center space-x-2">
+                <i class="fas fa-shopping-bag"></i>
+                <span>Continuer mes achats</span>
+            </a>
+            <a href="{{ url_for('client_profile') }}" 
+               class="border border-purple-600 text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-purple-50 transition inline-flex items-center justify-center space-x-2">
+                <i class="fas fa-user"></i>
+                <span>Voir mes commandes</span>
+            </a>
+        </div>
+    </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Animation de confirmation
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkmark = document.querySelector('.fa-check-circle');
+        if (checkmark) {
+            checkmark.style.transform = 'scale(0)';
+            setTimeout(() => {
+                checkmark.style.transition = 'transform 0.6s ease-out';
+                checkmark.style.transform = 'scale(1)';
+            }, 300);
+        }
+        
+        const currencies = {{ available_currencies|tojson|safe }};
+        const defaultCurrency = "{{ (current_currency or base_currency)|upper }}";
+        const normalize = (val) => (val || '').trim().toUpperCase();
+        document.querySelectorAll('.currency-prompt-download').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const href = link.getAttribute('href');
+                if (!href) return;
+                const choice = prompt(`Choisissez la devise pour la facture (${currencies.join(', ')})`, defaultCurrency);
+                if (!choice) return;
+                const code = normalize(choice);
+                if (!currencies.map(normalize).includes(code)) {
+                    alert('Devise non supportée.');
+                    return;
+                }
+                const separator = href.includes('?') ? '&' : '?';
+                window.location.href = `${href}${separator}currency=${encodeURIComponent(code)}`;
+            });
+        });
+    });
+
+    // Impression de la page
+    function printOrder() {
+        window.print();
+    }
+</script>
+{% endblock %}
