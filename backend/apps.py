@@ -23,12 +23,12 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
 
-    def create_app():
-        # Configuration des chemins
-        base_dir = os.path.abspath(os.path.dirname(__file__))
-        project_root = os.path.dirname(base_dir)
-    
-    app = Flask(__name__, 
+def create_app():
+    # Configuration des chemins
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    project_root = os.path.dirname(base_dir)
+
+    app = Flask(__name__,
                 template_folder=os.path.join(project_root, 'frontend', 'templates'),
                 static_folder=os.path.join(project_root, 'frontend', 'static'))
     
