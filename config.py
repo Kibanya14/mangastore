@@ -14,7 +14,11 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     # Par défaut la DB est créée dans le dossier du projet (manga/database.db)
     DEFAULT_SQLITE_PATH = os.path.join(BASEDIR, 'database.db')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f'sqlite:///{DEFAULT_SQLITE_PATH}')
+    _db_url = os.getenv('DATABASE_URL', f'sqlite:///{DEFAULT_SQLITE_PATH}')
+    # Render/Heroku fournissent souvent postgres://, SQLAlchemy préfère postgresql://
+    if _db_url.startswith('postgres://'):
+        _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = 'frontend/static/uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

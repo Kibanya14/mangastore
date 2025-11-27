@@ -16,3 +16,4 @@ Flask-Migrate==4.0.5
 Flask-SocketIO==5.3.6
 eventlet==0.33.3
 gunicorn==21.2.0
+psycopg2-binary==2.9.9
