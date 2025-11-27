@@ -5,6 +5,9 @@ from backend.models import db, User, Product, Category, Cart, CartItem, Order, O
 from flask_migrate import Migrate
 from backend.utils import generate_invoice_pdf, generate_products_pdf
 from backend.utils.helpers import get_first_image_url
+import eventlet
+eventlet.monkey_patch()
+
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_wtf import CSRFProtect
