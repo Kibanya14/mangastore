@@ -20,7 +20,16 @@ class Config:
         _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = 'frontend/static/uploads'
+    _static_folder = os.getenv('STATIC_FOLDER', os.path.join(BASEDIR, 'frontend', 'static'))
+    if not os.path.isabs(_static_folder):
+        _static_folder = os.path.join(BASEDIR, _static_folder)
+    STATIC_FOLDER = _static_folder
+    STATIC_URL_PATH = os.getenv('STATIC_URL_PATH', '/static')
+
+    _upload_folder = os.getenv('UPLOAD_FOLDER', 'frontend/static/uploads')
+    if not os.path.isabs(_upload_folder):
+        _upload_folder = os.path.join(BASEDIR, _upload_folder)
+    UPLOAD_FOLDER = _upload_folder
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     
     # Configuration Email

@@ -31,9 +31,18 @@ def create_app():
     base_dir = os.path.abspath(os.path.dirname(__file__))
     project_root = os.path.dirname(base_dir)
 
+    # Static config (overridable via .env)
+    static_folder = os.getenv('STATIC_FOLDER')
+    if static_folder and not os.path.isabs(static_folder):
+        static_folder = os.path.join(project_root, static_folder)
+    if not static_folder:
+        static_folder = os.path.join(project_root, 'frontend', 'static')
+    static_url_path = os.getenv('STATIC_URL_PATH', '/static')
+
     app = Flask(__name__,
                 template_folder=os.path.join(project_root, 'frontend', 'templates'),
-                static_folder=os.path.join(project_root, 'frontend', 'static'))
+                static_folder=static_folder,
+                static_url_path=static_url_path)
     
     # Charger configuration depuis config.py (respecte .env et permet PostgreSQL via DATABASE_URL)
     try:
@@ -45,6 +54,12 @@ def create_app():
         app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
         app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(project_root, 'database.db')}"
         app.config['BASE_CURRENCY'] = 'USD'
+        app.config['STATIC_FOLDER'] = static_folder
+        app.config['STATIC_URL_PATH'] = static_url_path
+
+    # Conserver les chemins statiques en config pour usage ultérieur
+    app.config.setdefault('STATIC_FOLDER', static_folder)
+    app.config.setdefault('STATIC_URL_PATH', static_url_path)
 
     # Ensure UPLOAD_FOLDER is absolute path
     upload_folder = app.config.get('UPLOAD_FOLDER', 'frontend/static/uploads')
