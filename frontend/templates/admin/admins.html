@@ -110,7 +110,7 @@
                             <div class="flex items-center">
                                 <div class="h-10 w-10 flex-shrink-0">
                                     {% if admin.profile_picture %}
-                                    <img class="h-10 w-10 rounded-full object-cover" src="{{ url_for('static', filename='uploads/profiles/' + admin.profile_picture) }}" alt="{{ admin.first_name }}">
+                                    <img class="h-10 w-10 rounded-full object-cover" src="{{ media_url('uploads/profiles/' + admin.profile_picture) }}" alt="{{ admin.first_name }}">
                                     {% else %}
                                     <div class="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
                                         <i class="fas fa-user text-purple-600"></i>

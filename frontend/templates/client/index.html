@@ -29,7 +29,7 @@
             <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
                class="bg-gray-50 rounded-xl p-6 text-center hover-scale shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl">
                 {% if category.image %}
-                <img src="{{ url_for('static', filename='uploads/categories/' + category.image) }}" 
+                <img src="{{ media_url('uploads/categories/' + category.image) }}" 
                      alt="{{ category.name }}" class="h-16 w-16 mx-auto mb-4 rounded-lg">
                 {% else %}
                 <div class="h-16 w-16 mx-auto mb-4 bg-purple-100 rounded-lg flex items-center justify-center">

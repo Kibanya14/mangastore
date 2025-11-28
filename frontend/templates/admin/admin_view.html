@@ -9,7 +9,7 @@
         <div class="flex items-center gap-4">
             <div class="h-14 w-14 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden">
                 {% if admin_user.profile_picture %}
-                <img src="{{ url_for('static', filename='uploads/profiles/' + admin_user.profile_picture) }}" alt="Profil" class="w-full h-full object-cover">
+                <img src="{{ media_url('uploads/profiles/' + admin_user.profile_picture) }}" alt="Profil" class="w-full h-full object-cover">
                 {% else %}
                 <i class="fas fa-user text-purple-600"></i>
                 {% endif %}

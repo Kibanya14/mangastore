@@ -8,6 +8,7 @@ import os
 from datetime import datetime, timedelta
 from flask import current_app
 import textwrap
+import requests
 
 def generate_invoice_pdf(order, target_currency=None):
     from backend.models import ShopSettings
@@ -71,30 +72,50 @@ def generate_invoice_pdf(order, target_currency=None):
     logo_center_y = height - 70
     logo_x = (width - logo_size) / 2
     logo_y = logo_center_y + logo_radius
-    try:
+    def _logo_reader():
         uploads = None
         try:
             uploads = current_app.config.get('UPLOAD_FOLDER')
         except RuntimeError:
             uploads = os.path.join('frontend', 'static', 'uploads')
-        if settings and settings.shop_logo:
-            logo_path = os.path.join(uploads, 'logos', settings.shop_logo)
-            if os.path.exists(logo_path):
-                c.saveState()
-                c.setFillColor(colors.white)
-                c.setStrokeColor(accent_color)
-                c.setLineWidth(3)
-                c.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius + 4, stroke=1, fill=1)
-                c.restoreState()
-                
-                c.saveState()
-                path = c.beginPath()
-                path.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius)
-                c.clipPath(path, stroke=0)
-                c.drawImage(ImageReader(logo_path), logo_x, logo_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
-                c.restoreState()
-    except Exception:
-        pass
+        if not settings or not settings.shop_logo:
+            return None
+        logo_value = settings.shop_logo
+        # Remote URL
+        if str(logo_value).startswith(('http://', 'https://')):
+            try:
+                resp = requests.get(logo_value, timeout=5)
+                resp.raise_for_status()
+                return ImageReader(BytesIO(resp.content))
+            except Exception:
+                return None
+        # Local file
+        candidate = os.path.join(uploads, 'logos', logo_value)
+        if os.path.exists(candidate):
+            try:
+                return ImageReader(candidate)
+            except Exception:
+                return None
+        return None
+
+    logo_reader = _logo_reader()
+    if logo_reader:
+        try:
+            c.saveState()
+            c.setFillColor(colors.white)
+            c.setStrokeColor(accent_color)
+            c.setLineWidth(3)
+            c.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius + 4, stroke=1, fill=1)
+            c.restoreState()
+            
+            c.saveState()
+            path = c.beginPath()
+            path.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius)
+            c.clipPath(path, stroke=0)
+            c.drawImage(logo_reader, logo_x, logo_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
+            c.restoreState()
+        except Exception:
+            pass
     
     # Positionnement des blocs d'en-tête
     shop_block_top = logo_center_y - logo_radius - 25

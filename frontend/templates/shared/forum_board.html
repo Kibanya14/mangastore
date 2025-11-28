@@ -23,8 +23,8 @@
                 {% set avatar = None %}
                 {% set sender_name = 'Utilisateur' %}
                 {% set is_me = False %}
-                {% if msg.deliverer and msg.deliverer.profile_picture %}{% set avatar = url_for('static', filename='uploads/profiles/' + msg.deliverer.profile_picture) %}{% endif %}
-                {% if msg.requester and msg.requester.profile_picture %}{% set avatar = url_for('static', filename='uploads/profiles/' + msg.requester.profile_picture) %}{% endif %}
+                {% if msg.deliverer and msg.deliverer.profile_picture %}{% set avatar = msg.deliverer.profile_picture if msg.deliverer.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.deliverer.profile_picture) %}{% endif %}
+                {% if msg.requester and msg.requester.profile_picture %}{% set avatar = msg.requester.profile_picture if msg.requester.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.requester.profile_picture) %}{% endif %}
                 {% if msg.deliverer %}{% set sender_name = msg.deliverer.first_name ~ ' ' ~ msg.deliverer.last_name %}{% endif %}
                 {% if msg.requester %}{% set sender_name = msg.requester.first_name ~ ' ' ~ msg.requester.last_name %}{% endif %}
                 {% if current_user.is_authenticated %}
@@ -55,22 +55,23 @@
                                     {% endif %}
                                     {% if msg.attachment_path %}
                                     <div class="mt-2 space-y-2">
+                                        {% set attach_url = msg.attachment_path if msg.attachment_path.startswith('http') else media_url(msg.attachment_path) %}
                                         {% if msg.attachment_type == 'image' %}
-                                        <img src="{{ url_for('static', filename=msg.attachment_path) }}" alt="Pièce jointe" class="rounded-lg max-h-64 object-contain border">
+                                        <img src="{{ attach_url }}" alt="Pièce jointe" class="rounded-lg max-h-64 object-contain border">
                                         {% elif msg.attachment_type == 'audio' %}
                                         <div class="flex items-center gap-2 text-sm text-gray-700">
                                             <i class="fas fa-microphone text-purple-600"></i>
                                             <audio controls class="w-full">
-                                                <source src="{{ url_for('static', filename=msg.attachment_path) }}">
+                                                <source src="{{ attach_url }}">
                                             </audio>
                                         </div>
                                         {% elif msg.attachment_type == 'video' %}
                                         <video controls class="rounded-lg w-full max-h-72">
-                                            <source src="{{ url_for('static', filename=msg.attachment_path) }}">
+                                            <source src="{{ attach_url }}">
                                         </video>
                                         <p class="text-[11px] text-gray-500 flex items-center gap-1"><i class="fas fa-clock"></i>Vidéos conseillées ≤20s</p>
                                         {% else %}
-                                        <a href="{{ url_for('static', filename=msg.attachment_path) }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-2">
+                                        <a href="{{ attach_url }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-2">
                                             <i class="fas fa-file"></i>Ouvrir le fichier
                                         </a>
                                         {% endif %}

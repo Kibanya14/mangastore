@@ -42,7 +42,7 @@
                         <div class="flex items-center gap-3">
                             <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
                                 {% if r.requester.profile_picture %}
-                                <img src="{{ url_for('static', filename='uploads/profiles/' + r.requester.profile_picture) }}" alt="{{ r.requester.first_name }}" class="h-full w-full object-cover">
+                                <img src="{{ media_url('uploads/profiles/' + r.requester.profile_picture) }}" alt="{{ r.requester.first_name }}" class="h-full w-full object-cover">
                                 {% else %}
                                 <i class="fas fa-user text-gray-500"></i>
                                 {% endif %}

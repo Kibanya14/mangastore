@@ -10,7 +10,7 @@
     
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="{{ url_for('static', filename='uploads/logos/' + (shop_settings.admin_logo or shop_settings.shop_logo or 'default_logo.svg')) }}">
+    <link rel="icon" href="{{ media_url('uploads/logos/' + (shop_settings.admin_logo or shop_settings.shop_logo or 'default_logo.svg')) }}">
     
     <style>
         :root {
@@ -45,7 +45,7 @@
                 <div class="flex items-center space-x-3">
                     {% set admin_logo_file = shop_settings.admin_logo if shop_settings and shop_settings.admin_logo else (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else None) %}
                     {% if admin_logo_file %}
-                    <img src="{{ url_for('static', filename='uploads/logos/' + admin_logo_file) }}" alt="Logo" class="logo-round">
+                    <img src="{{ media_url('uploads/logos/' + admin_logo_file) }}" alt="Logo" class="logo-round">
                     {% else %}
                     <i class="fas fa-book text-purple-300 text-2xl"></i>
                     {% endif %}
@@ -177,7 +177,7 @@
                         <div class="relative group">
                             <button type="button" class="h-10 w-10 rounded-full border border-purple-200 overflow-hidden flex items-center justify-center bg-gray-50">
                                 {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
-                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                                <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
                                 {% else %}
                                 <i class="fas fa-user text-gray-500"></i>
                                 {% endif %}

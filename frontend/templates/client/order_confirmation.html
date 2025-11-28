@@ -71,7 +71,7 @@
                                 {% if first_image.startswith('http') %}
                                 <img src="{{ first_image }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
                                 {% else %}
-                                <img src="{{ url_for('static', filename='uploads/products/' + first_image) }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
+                                <img src="{{ first_image if first_image.startswith('http') else media_url('uploads/products/' + first_image) }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
                                 {% endif %}
                             {% else %}
                                 <div class="h-16 w-16 bg-purple-100 rounded-lg flex items-center justify-center">

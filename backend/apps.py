@@ -5,6 +5,7 @@ from backend.models import db, User, Product, Category, Cart, CartItem, Order, O
 from flask_migrate import Migrate
 from backend.utils import generate_invoice_pdf, generate_products_pdf
 from backend.utils.helpers import get_first_image_url
+from backend.utils.storage import upload_to_cloudinary
 import eventlet
 eventlet.monkey_patch()
 
@@ -112,6 +113,23 @@ def create_app():
             return User.query.get(int(str(user_id).split(':')[-1]))
         except Exception:
             return None
+
+    @app.context_processor
+    def inject_media_url():
+        def media_url(path):
+            if not path:
+                return None
+            path_str = str(path)
+            if path_str.startswith(('http://', 'https://')):
+                return path_str
+            cleaned = path_str.lstrip('/')
+            # Handle accidental prefix like "uploads/logos/https://..."
+            if cleaned.startswith('uploads/') and '://' in cleaned:
+                parts = cleaned.split('/', 2)
+                if len(parts) >= 3 and parts[2].startswith(('http://', 'https://')):
+                    return parts[2]
+            return url_for('static', filename=cleaned)
+        return dict(media_url=media_url)
     
     # === UTILITAIRES ===
     _rate_cache = {'data': {}, 'timestamp': 0}
@@ -1246,19 +1264,25 @@ def create_app():
                 flash('Type de fichier non autorisé', 'error')
                 return redirect(url_for('client_profile'))
 
-            dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles')
-            os.makedirs(dest_dir, exist_ok=True)
-            new_filename = f"profile_{current_user.id}_{int(datetime.now().timestamp())}.{ext}"
-            path = os.path.join(dest_dir, new_filename)
-            try:
-                file.save(path)
-                current_user.profile_picture = new_filename
+            uploaded_url = upload_to_cloudinary(file, 'uploads/profiles', logger=app.logger)
+            if uploaded_url:
+                current_user.profile_picture = uploaded_url
                 db.session.commit()
                 flash('Photo de profil mise à jour', 'success')
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Erreur enregistrement photo profil: {e}")
-                flash('Erreur lors de l\'upload de la photo', 'error')
+            else:
+                dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles')
+                os.makedirs(dest_dir, exist_ok=True)
+                new_filename = f"profile_{current_user.id}_{int(datetime.now().timestamp())}.{ext}"
+                path = os.path.join(dest_dir, new_filename)
+                try:
+                    file.save(path)
+                    current_user.profile_picture = new_filename
+                    db.session.commit()
+                    flash('Photo de profil mise à jour', 'success')
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.error(f"Erreur enregistrement photo profil: {e}")
+                    flash('Erreur lors de l\'upload de la photo', 'error')
 
         return redirect(url_for('client_profile') if not current_user.is_admin else url_for('admin_profile'))
 
@@ -1435,6 +1459,10 @@ def create_app():
                         ext = ext.lower().lstrip('.')
                         allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                         if ext in allowed:
+                            uploaded_url = upload_to_cloudinary(f, 'uploads/products', logger=app.logger)
+                            if uploaded_url:
+                                image_entries.append(uploaded_url)
+                                continue
                             new_filename = f"prod_{int(datetime.now().timestamp())}_{secrets.token_hex(6)}.{ext}"
                             path = os.path.join(dest_dir, new_filename)
                             try:
@@ -1498,6 +1526,10 @@ def create_app():
                         ext = ext.lower().lstrip('.')
                         allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                         if ext in allowed:
+                            uploaded_url = upload_to_cloudinary(f, 'uploads/products', logger=app.logger)
+                            if uploaded_url:
+                                image_entries.append(uploaded_url)
+                                continue
                             new_filename = f"prod_{int(datetime.now().timestamp())}_{secrets.token_hex(6)}.{ext}"
                             path = os.path.join(dest_dir, new_filename)
                             try:
@@ -1856,10 +1888,14 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo', 'error')
                             else:
-                                filename = f"logo_{int(datetime.now().timestamp())}.{ext}"
-                                logo_path = os.path.join(logos_dir, filename)
-                                logo.save(logo_path)
-                                settings.shop_logo = filename
+                                uploaded_url = upload_to_cloudinary(logo, 'uploads/logos', logger=app.logger)
+                                if uploaded_url:
+                                    settings.shop_logo = uploaded_url
+                                else:
+                                    filename = f"logo_{int(datetime.now().timestamp())}.{ext}"
+                                    logo_path = os.path.join(logos_dir, filename)
+                                    logo.save(logo_path)
+                                    settings.shop_logo = filename
                         except Exception as e:
                             app.logger.error(f"Erreur enregistrement logo: {e}")
                             flash('Erreur lors de l\'upload du logo', 'error')
@@ -1878,10 +1914,14 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo admin', 'error')
                             else:
-                                filename = f"admin_logo_{int(datetime.now().timestamp())}.{ext}"
-                                logo_path = os.path.join(logos_dir, filename)
-                                admin_logo.save(logo_path)
-                                settings.admin_logo = filename
+                                uploaded_url = upload_to_cloudinary(admin_logo, 'uploads/logos', logger=app.logger)
+                                if uploaded_url:
+                                    settings.admin_logo = uploaded_url
+                                else:
+                                    filename = f"admin_logo_{int(datetime.now().timestamp())}.{ext}"
+                                    logo_path = os.path.join(logos_dir, filename)
+                                    admin_logo.save(logo_path)
+                                    settings.admin_logo = filename
                         except Exception as e:
                             app.logger.error(f"Erreur enregistrement admin logo: {e}")
                             flash('Erreur lors de l\'upload du logo admin', 'error')
@@ -1901,10 +1941,14 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo livreur', 'error')
                             else:
-                                filename = f"deliverer_logo_{int(datetime.now().timestamp())}.{ext}"
-                                logo_path = os.path.join(logos_dir, filename)
-                                deliverer_logo.save(logo_path)
-                                settings.deliverer_logo = filename
+                                uploaded_url = upload_to_cloudinary(deliverer_logo, 'uploads/logos', logger=app.logger)
+                                if uploaded_url:
+                                    settings.deliverer_logo = uploaded_url
+                                else:
+                                    filename = f"deliverer_logo_{int(datetime.now().timestamp())}.{ext}"
+                                    logo_path = os.path.join(logos_dir, filename)
+                                    deliverer_logo.save(logo_path)
+                                    settings.deliverer_logo = filename
                         except Exception as e:
                             app.logger.error(f"Erreur enregistrement logo livreur: {e}")
                             flash('Erreur lors de l\'upload du logo livreur', 'error')
@@ -2344,11 +2388,15 @@ def create_app():
                     ext = ext.lower().lstrip('.')
                     allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
                     if ext in allowed:
-                        filename = f"livreur_{int(datetime.now().timestamp())}.{ext}"
-                        dest = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles')
-                        os.makedirs(dest, exist_ok=True)
-                        profile_pic.save(os.path.join(dest, filename))
-                        current_user.profile_picture = filename
+                        uploaded_url = upload_to_cloudinary(profile_pic, 'uploads/profiles', logger=app.logger)
+                        if uploaded_url:
+                            current_user.profile_picture = uploaded_url
+                        else:
+                            filename = f"livreur_{int(datetime.now().timestamp())}.{ext}"
+                            dest = os.path.join(app.config['UPLOAD_FOLDER'], 'profiles')
+                            os.makedirs(dest, exist_ok=True)
+                            profile_pic.save(os.path.join(dest, filename))
+                            current_user.profile_picture = filename
 
             db.session.commit()
             flash('Profil mis à jour', 'success')
@@ -2463,7 +2511,7 @@ def create_app():
         try:
             pic = getattr(current_user, 'profile_picture', None)
             if pic:
-                avatar = url_for('static', filename='uploads/profiles/' + pic)
+                avatar = pic if (str(pic).startswith('http://') or str(pic).startswith('https://')) else url_for('static', filename='uploads/profiles/' + pic)
         except Exception:
             avatar = None
         user_id = getattr(current_user, 'id', None)
@@ -2499,7 +2547,7 @@ def create_app():
             for d in deliverers:
                 avatar = None
                 if d.profile_picture:
-                    avatar = url_for('static', filename='uploads/profiles/' + d.profile_picture)
+                    avatar = d.profile_picture if str(d.profile_picture).startswith(('http://', 'https://')) else url_for('static', filename='uploads/profiles/' + d.profile_picture)
                 add_entry(
                     'livreur',
                     f"{d.first_name} {d.last_name}",
@@ -2516,7 +2564,7 @@ def create_app():
             for a in admins:
                 avatar = None
                 if a.profile_picture:
-                    avatar = url_for('static', filename='uploads/profiles/' + a.profile_picture)
+                    avatar = a.profile_picture if str(a.profile_picture).startswith(('http://', 'https://')) else url_for('static', filename='uploads/profiles/' + a.profile_picture)
                 add_entry(
                     'admin',
                     f"{a.first_name} {a.last_name}",
@@ -2614,25 +2662,29 @@ def create_app():
                 if size > 15 * 1024 * 1024:
                     flash('Fichier trop volumineux (max 15MB).', 'error')
                     return redirect(request.referrer or url_for('forum'))
-                dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'forum')
-                os.makedirs(dest_dir, exist_ok=True)
-                new_filename = f"forum_{int(datetime.now().timestamp())}_{secrets.token_hex(4)}.{ext}"
-                path = os.path.join(dest_dir, new_filename)
-                try:
-                    file.save(path)
-                    attachment_path = f"uploads/forum/{new_filename}"
-                    if ext in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
-                        attachment_type = 'image'
-                    elif ext in {'mp3', 'wav', 'ogg'}:
-                        attachment_type = 'audio'
-                    elif ext in {'mp4', 'webm', 'mov'}:
-                        attachment_type = 'video'
-                    else:
-                        attachment_type = 'file'
-                except Exception as e:
-                    app.logger.error(f"Erreur upload fichier forum: {e}")
-                    flash('Impossible de sauvegarder le fichier.', 'error')
-                    return redirect(request.referrer or url_for('forum'))
+                uploaded_url = upload_to_cloudinary(file, 'uploads/forum', logger=app.logger, resource_type="auto")
+                if uploaded_url:
+                    attachment_path = uploaded_url
+                else:
+                    dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'forum')
+                    os.makedirs(dest_dir, exist_ok=True)
+                    new_filename = f"forum_{int(datetime.now().timestamp())}_{secrets.token_hex(4)}.{ext}"
+                    path = os.path.join(dest_dir, new_filename)
+                    try:
+                        file.save(path)
+                        attachment_path = f"uploads/forum/{new_filename}"
+                    except Exception as e:
+                        app.logger.error(f"Erreur upload fichier forum: {e}")
+                        flash('Impossible de sauvegarder le fichier.', 'error')
+                        return redirect(request.referrer or url_for('forum'))
+                if ext in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
+                    attachment_type = 'image'
+                elif ext in {'mp3', 'wav', 'ogg'}:
+                    attachment_type = 'audio'
+                elif ext in {'mp4', 'webm', 'mov'}:
+                    attachment_type = 'video'
+                else:
+                    attachment_type = 'file'
 
             role = 'deliverer' if getattr(current_user, 'is_deliverer', False) else ('admin' if current_user.is_admin else 'client')
             msg = ForumMessage(

@@ -16,7 +16,7 @@
             <div class="flex items-center gap-3">
                 <div class="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold overflow-hidden">
                     {% if shop_settings and shop_settings.deliverer_logo %}
-                    <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
+                    <img src="{{ media_url('uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
                     {% else %}
                     <span>ML</span>
                     {% endif %}
@@ -46,7 +46,7 @@
                 <div class="relative group">
                     <button class="h-10 w-10 rounded-full border border-emerald-200 overflow-hidden flex items-center justify-center bg-emerald-50">
                         {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
-                        <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                        <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
                         {% else %}
                         <i class="fas fa-user text-emerald-700"></i>
                         {% endif %}

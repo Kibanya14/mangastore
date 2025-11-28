@@ -10,7 +10,7 @@
         <div class="flex items-center space-x-4">
             <div class="h-20 w-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                 {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
-                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
                 {% else %}
                 <img src="{{ url_for('static', filename='uploads/profiles/default_profile.svg') }}" alt="Profil" class="h-full w-full object-cover">
                 {% endif %}

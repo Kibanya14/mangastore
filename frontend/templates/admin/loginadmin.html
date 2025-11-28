@@ -30,7 +30,7 @@
             <div class="text-center mb-8">
                 <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
                     {% if shop_settings and shop_settings.admin_logo %}
-                    <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.admin_logo) }}" alt="Logo admin" class="w-full h-full object-cover">
+                    <img src="{{ media_url('uploads/logos/' + shop_settings.admin_logo) }}" alt="Logo admin" class="w-full h-full object-cover">
                     {% else %}
                     <i class="fas fa-book text-purple-600 text-3xl"></i>
                     {% endif %}

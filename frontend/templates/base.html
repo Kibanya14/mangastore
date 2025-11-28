@@ -10,7 +10,7 @@
     
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="{{ url_for('static', filename='uploads/logos/' + (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else 'default_logo.svg')) }}">
+    <link rel="icon" href="{{ media_url('uploads/logos/' + (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else 'default_logo.svg')) }}">
     
     <!-- Custom CSS -->
     <style>
@@ -52,7 +52,7 @@
                 <div class="flex items-center">
                     <a href="{{ url_for('index') }}" class="flex items-center space-x-2">
                         {% if shop_settings and shop_settings.shop_logo %}
-                        <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.shop_logo) }}" 
+                        <img src="{{ media_url('uploads/logos/' + shop_settings.shop_logo) }}" 
                              alt="Logo" class="h-12 w-12 rounded-full object-cover ring-2 ring-purple-100">
                         {% else %}
                         <i class="fas fa-book text-purple-600 text-2xl"></i>
@@ -109,7 +109,7 @@
                             <button class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition">
                                 {% set has_pic = current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
                                 {% if has_pic %}
-                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                                <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" 
                                      alt="Profile" class="h-8 w-8 rounded-full border-2 border-purple-500 object-cover">
                                 {% else %}
                                 <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 border border-purple-200">
@@ -136,7 +136,7 @@
                             <button class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition">
                                 {% set has_pic = current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
                                 {% if has_pic %}
-                                <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                                <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" 
                                      alt="Profile" class="h-8 w-8 rounded-full border-2 border-purple-500 object-cover">
                                 {% else %}
                                 <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 border border-purple-200">
