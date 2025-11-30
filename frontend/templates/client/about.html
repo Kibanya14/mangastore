@@ -5,17 +5,58 @@
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-12 space-y-6">
     <h1 class="text-3xl font-bold text-gray-900">À propos de Manga Store</h1>
-    <p class="text-gray-700 leading-relaxed">
-        Ici, "Manga" signifie <strong>Maniana Ngayo</strong>, le fondateur de Manga Store. Notre boutique est née pour simplifier l'accès aux produits culturels et inspirants, avec un soin particulier sur la livraison et le suivi des commandes.
-    </p>
-    <div class="bg-white rounded-xl shadow p-6 space-y-3">
-        <h2 class="text-xl font-semibold text-gray-800">Engagements</h2>
-        <ul class="list-disc list-inside text-gray-700 space-y-1">
-            <li>Transparence sur l'origine des produits.</li>
-            <li>Livraison suivie avec localisation issue de votre adresse.</li>
-            <li>Support réactif par l'équipe Maniana Ngayo.</li>
-        </ul>
+
+    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <div class="space-y-2">
+            <h2 class="text-xl font-semibold text-gray-800">Qui sommes-nous ?</h2>
+            <p class="text-gray-700 leading-relaxed">
+                Manga Store est une boutique en ligne légale et enregistrée, dédiée à la vente de produits variés avec un suivi de commande transparent. La direction opérationnelle est assurée par notre équipe interne (Maniana Ngayo / Manga Store) et les responsables de la boutique indiqués ci-dessous.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-gray-50 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Responsables & contacts</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li><strong>Responsable boutique :</strong> Équipe Manga Store (Maniana Ngayo)</li>
+                    <li><strong>Contact :</strong> {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}</li>
+                    <li><strong>Téléphone :</strong> {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}</li>
+                    <li><strong>Adresse :</strong> Disponible sur demande / facture</li>
+                </ul>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Services proposés</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>Catalogue multi-produits avec descriptifs clairs</li>
+                    <li>Suivi de commande et notifications</li>
+                    <li>Livraison optimisée avec géolocalisation</li>
+                    <li>Support client réactif</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="p-4 bg-white border border-purple-100 rounded-lg space-y-2">
+            <h3 class="font-semibold text-gray-800">Conception et réalisation</h3>
+            <p class="text-sm text-gray-700">
+                La plateforme Manga Store a été conçue et intégrée par <strong>Esperdigi Technologie</strong>, société de services digitaux et technologiques, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
+            </p>
+            <p class="text-sm text-gray-600">
+                Esperdigi accompagne Manga Store sur le développement web, l’optimisation technique et le support évolutif de la boutique.
+            </p>
+        </div>
+
+        <div class="p-4 bg-gray-50 rounded-lg space-y-2">
+            <h3 class="font-semibold text-gray-800">Engagements légaux & confiance</h3>
+            <ul class="text-sm text-gray-700 space-y-1">
+                <li>Politique de confidentialité et respect des données clients</li>
+                <li>Facturation conforme et informations légales sur les documents</li>
+                <li>Transparence sur l’origine et la disponibilité des produits</li>
+            </ul>
+        </div>
     </div>
-    <p class="text-gray-600 text-sm">Besoin d'aide ? Contactez-nous à {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}.</p>
+
+    <p class="text-gray-600 text-sm">
+        Besoin d’aide ? Contactez-nous à {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou via le formulaire de contact du site.
+    </p>
 </div>
 {% endblock %}

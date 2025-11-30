@@ -5,27 +5,42 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow p-6 space-y-4">
-    <h2 class="text-xl font-semibold text-gray-800">Maniana Ngayo (Manga)</h2>
-    <p class="text-gray-700 leading-relaxed">
-        "Manga" est l'abréviation de <strong>Maniana Ngayo</strong>, fondateur de Manga Store. Cette plateforme e-commerce est pensée pour gérer produits, commandes et livraisons avec précision, tout en offrant une expérience claire pour les clients comme pour l'équipe.
-    </p>
+    <div class="space-y-2">
+        <h2 class="text-xl font-semibold text-gray-800">Manga Store — Administration</h2>
+        <p class="text-gray-700 leading-relaxed">
+            Manga Store est une boutique en ligne légale, dirigée par l’équipe interne (Maniana Ngayo) et gérée au quotidien par l’administration. Cette section rappelle les mentions clés pour l’équipe, les responsables et le partenaire technologique.
+        </p>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="p-4 bg-gray-50 rounded">
-            <h3 class="font-semibold text-gray-800 mb-2">Mentions légales</h3>
+        <div class="p-4 bg-gray-50 rounded space-y-1">
+            <h3 class="font-semibold text-gray-800 mb-1">Mentions & contacts</h3>
             <ul class="text-sm text-gray-700 space-y-1">
-                <li>Raison sociale : Manga Store (Maniana Ngayo)</li>
-                <li>Contact : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}</li>
-                <li>Téléphone : {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}</li>
+                <li><strong>Raison sociale :</strong> Manga Store (Maniana Ngayo)</li>
+                <li><strong>Responsable boutique :</strong> Équipe Manga Store</li>
+                <li><strong>Email :</strong> {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}</li>
+                <li><strong>Téléphone :</strong> {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}</li>
             </ul>
         </div>
-        <div class="p-4 bg-gray-50 rounded">
-            <h3 class="font-semibold text-gray-800 mb-2">Bonnes pratiques internes</h3>
-            <ul class="text-sm text-gray-700 space-y-1">
-                <li>Valider les stocks avant expédition.</li>
-                <li>Utiliser la localisation client pour optimiser la livraison.</li>
-                <li>Mettre à jour les statuts commandes en temps réel.</li>
-            </ul>
+        <div class="p-4 bg-gray-50 rounded space-y-1">
+            <h3 class="font-semibold text-gray-800 mb-1">Partenaire technologique</h3>
+            <p class="text-sm text-gray-700">
+                Plateforme conçue et intégrée par <strong>Esperdigi Technologie</strong>, société de services digitaux, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
+            </p>
+            <p class="text-sm text-gray-600">
+                Esperdigi accompagne Manga Store sur le développement, l’optimisation et l’évolution technique de la boutique web.
+            </p>
         </div>
+    </div>
+
+    <div class="p-4 bg-white border border-gray-100 rounded space-y-2">
+        <h3 class="font-semibold text-gray-800">Rappels de bonnes pratiques internes</h3>
+        <ul class="text-sm text-gray-700 space-y-1">
+            <li>Valider les stocks et statuts avant expédition</li>
+            <li>Mettre à jour les statuts de commande et de livraison en temps réel</li>
+            <li>Respecter la confidentialité et la conformité des données clients</li>
+            <li>Documenter les interventions techniques et signaler les anomalies</li>
+        </ul>
     </div>
 </div>
 {% endblock %}
