@@ -2,54 +2,80 @@ import os
 import secrets
 import time
 
+# Uploads persistants : Supabase Storage (public URL). Si les creds sont absents, on retourne None et l'appelant retombe sur le disque local.
 try:
-    import cloudinary
-    import cloudinary.uploader
+    from supabase import create_client
 except ImportError:  # pragma: no cover - optional dependency
-    cloudinary = None
+    create_client = None
+
+_supabase_client_cache = None
 
 
-def _cloudinary_configured():
+def _supabase_configured():
     return (
-        cloudinary is not None
-        and os.getenv("CLOUDINARY_CLOUD_NAME")
-        and os.getenv("CLOUDINARY_API_KEY")
-        and os.getenv("CLOUDINARY_API_SECRET")
+        create_client is not None
+        and os.getenv("SUPABASE_URL")
+        and os.getenv("SUPABASE_KEY")
+        and os.getenv("SUPABASE_BUCKET")
     )
 
 
-def _cloudinary_folder(subfolder: str = "") -> str:
-    base = os.getenv("CLOUDINARY_FOLDER", "manga")
-    if not subfolder:
-        return base
-    return f"{base.strip('/')}/{subfolder.strip('/')}"
+def _supabase_path(subfolder: str, filename: str) -> str:
+    folder = (subfolder or "").strip("/")
+    if folder:
+        return f"{folder}/{filename}"
+    return filename
 
 
-def upload_to_cloudinary(file_storage, subfolder: str, logger=None, resource_type: str = "auto") -> str | None:
-    """Upload a Werkzeug FileStorage to Cloudinary. Returns secure URL or None on failure."""
-    if not _cloudinary_configured() or not file_storage:
+def _get_supabase_client():
+    """Cache le client Supabase pour éviter des reconnections répétées."""
+    global _supabase_client_cache
+    if _supabase_client_cache:
+        return _supabase_client_cache
+    if not _supabase_configured():
+        return None
+    try:
+        client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+        bucket = os.getenv("SUPABASE_BUCKET")
+        _supabase_client_cache = (client, bucket)
+        return _supabase_client_cache
+    except Exception:
+        return None
+
+
+def upload_media(file_storage, subfolder: str, logger=None, resource_type: str = "auto") -> str | None:
+    """
+    Upload vers Supabase Storage. Retourne une URL publique ou None si non dispo.
+    Le code appelant peut retomber sur le stockage local en cas d'échec.
+    """
+    client_info = _get_supabase_client()
+    if not client_info or not file_storage or not getattr(file_storage, "filename", None):
+        return None
+
+    client, bucket = client_info
+    name, ext = os.path.splitext(file_storage.filename or "")
+    ext = ext.lower()
+    generated = f"{int(time.time())}_{secrets.token_hex(6)}{ext}"
+    path = _supabase_path(subfolder, generated)
+
+    try:
+        file_storage.stream.seek(0)
+        data = file_storage.read()
+        file_storage.stream.seek(0)
+    except Exception:
+        data = None
+
+    if not data:
         return None
 
     try:
-        cloudinary.config(
-            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-            api_key=os.getenv("CLOUDINARY_API_KEY"),
-            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-            secure=True,
-        )
-        public_id = f"{int(time.time())}_{secrets.token_hex(6)}"
-        result = cloudinary.uploader.upload(
-            file_storage,
-            folder=_cloudinary_folder(subfolder),
-            public_id=public_id,
-            overwrite=False,
-            resource_type=resource_type,
-        )
-        return result.get("secure_url")
+        client.storage.from_(bucket).upload(path, data, file_options={"content-type": file_storage.mimetype})
+        url = client.storage.from_(bucket).get_public_url(path)
+        return url
     except Exception as exc:  # pragma: no cover - external service
         if logger:
             try:
-                logger.warning(f"Cloudinary upload failed: {exc}")
+                logger.warning(f"Supabase upload failed: {exc}")
             except Exception:
                 pass
         return None

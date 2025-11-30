@@ -41,6 +41,7 @@ def generate_products_pdf(products, target_currency=None):
         return None
 
     if settings and settings.shop_logo:
+        # Logo peut venir d'une URL (Supabase/public) ou du disque local uploads/logos
         if str(settings.shop_logo).startswith(('http://', 'https://')):
             logo_reader = _image_reader(settings.shop_logo)
         else:

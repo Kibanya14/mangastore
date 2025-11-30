@@ -1,7 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="12" fill="#0ea5e9"/>
-  <path d="M18 22h16l6 8h6a4 4 0 0 1 4 4v8H14v-4" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="22" cy="46" r="4" fill="#fff"/>
-  <circle cx="46" cy="46" r="4" fill="#fff"/>
-  <path d="M14 38h10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Default deliverer logo">
+  <defs>
+    <linearGradient id="gd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="28" fill="url(#gd)"/>
+  <rect x="36" y="104" width="128" height="52" rx="18" fill="#fff" fill-opacity="0.92"/>
+  <circle cx="82" cy="156" r="14" fill="#10b981"/>
+  <circle cx="138" cy="156" r="14" fill="#10b981"/>
+  <path d="M60 90h80l12 24H72z" fill="#fff" fill-opacity="0.95"/>
+  <text x="100" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#0f172a" font-weight="700">LIVREUR</text>
 </svg>

@@ -18,17 +18,30 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table('deliverers', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('status', sa.String(length=20), nullable=True, server_default='available'))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    with op.batch_alter_table('orders', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('status_changed_at', sa.DateTime(), server_default=func.now(), nullable=True))
+    deliverer_cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "status" not in deliverer_cols:
+        with op.batch_alter_table('deliverers', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('status', sa.String(length=20), nullable=True, server_default='available'))
+
+    order_cols = {c["name"] for c in inspector.get_columns("orders")}
+    if "status_changed_at" not in order_cols:
+        with op.batch_alter_table('orders', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('status_changed_at', sa.DateTime(), server_default=func.now(), nullable=True))
 
 
 def downgrade():
-    with op.batch_alter_table('orders', schema=None) as batch_op:
-        batch_op.drop_column('status_changed_at')
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    with op.batch_alter_table('deliverers', schema=None) as batch_op:
-        batch_op.drop_column('status')
+    order_cols = {c["name"] for c in inspector.get_columns("orders")}
+    if "status_changed_at" in order_cols:
+        with op.batch_alter_table('orders', schema=None) as batch_op:
+            batch_op.drop_column('status_changed_at')
 
+    deliverer_cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "status" in deliverer_cols:
+        with op.batch_alter_table('deliverers', schema=None) as batch_op:
+            batch_op.drop_column('status')

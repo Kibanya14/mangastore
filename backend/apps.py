@@ -1,3 +1,9 @@
+import os
+
+# Désactiver greendns avant d'importer eventlet (évite les timeouts DNS SMTP)
+os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")
+
+import eventlet
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, send_file, current_app, session, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
@@ -5,15 +11,11 @@ from backend.models import db, User, Product, Category, Cart, CartItem, Order, O
 from flask_migrate import Migrate
 from backend.utils import generate_invoice_pdf, generate_products_pdf
 from backend.utils.helpers import get_first_image_url
-from backend.utils.storage import upload_to_cloudinary
-import eventlet
-eventlet.monkey_patch()
-
+from backend.utils.storage import upload_media
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_wtf import CSRFProtect
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-import os
 from datetime import datetime, timedelta
 import json
 import secrets
@@ -24,6 +26,9 @@ from sqlalchemy.orm import joinedload
 import requests
 from threading import Timer
 from flask_socketio import SocketIO, emit, join_room, leave_room
+
+# Patch standard eventlet après avoir configuré ENV
+eventlet.monkey_patch()
 
 socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
 
@@ -1113,7 +1118,7 @@ def create_app():
                 # Do not reveal whether the email exists
                 flash('Email de réinitialisation envoyé si l\'email existe.', 'info')
 
-            return redirect(url_for('login'))
+            return redirect(url_for('client_login'))
 
         return render_template('client/reset_request.html')
 
@@ -1264,7 +1269,8 @@ def create_app():
                 flash('Type de fichier non autorisé', 'error')
                 return redirect(url_for('client_profile'))
 
-            uploaded_url = upload_to_cloudinary(file, 'uploads/profiles', logger=app.logger)
+            # Photo de profil: priorité Supabase, sinon sauvegarde locale
+            uploaded_url = upload_media(file, 'uploads/profiles', logger=app.logger)
             if uploaded_url:
                 current_user.profile_picture = uploaded_url
                 db.session.commit()
@@ -1447,7 +1453,7 @@ def create_app():
                     if u:
                         image_entries.append(u)
 
-            # Upload files
+            # Upload fichiers: d'abord Supabase via upload_media, sinon fallback disque local
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'products')
@@ -1459,7 +1465,7 @@ def create_app():
                         ext = ext.lower().lstrip('.')
                         allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                         if ext in allowed:
-                            uploaded_url = upload_to_cloudinary(f, 'uploads/products', logger=app.logger)
+                            uploaded_url = upload_media(f, 'uploads/products', logger=app.logger)
                             if uploaded_url:
                                 image_entries.append(uploaded_url)
                                 continue
@@ -1515,6 +1521,7 @@ def create_app():
                     if u:
                         image_entries.append(u)
 
+            # Upload fichiers: d'abord Supabase via upload_media, sinon fallback disque local
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'products')
@@ -1526,7 +1533,7 @@ def create_app():
                         ext = ext.lower().lstrip('.')
                         allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
                         if ext in allowed:
-                            uploaded_url = upload_to_cloudinary(f, 'uploads/products', logger=app.logger)
+                            uploaded_url = upload_media(f, 'uploads/products', logger=app.logger)
                             if uploaded_url:
                                 image_entries.append(uploaded_url)
                                 continue
@@ -1872,7 +1879,7 @@ def create_app():
                 settings.shipping_cost = shipping_cost_input
                 settings.shipping_cost_out = shipping_cost_out_input
                 
-                # Gestion du logo
+                # Gestion du logo: upload_media (Supabase) sinon fallback disque local
                 if 'shop_logo' in request.files:
                     logo = request.files['shop_logo']
                     if logo and logo.filename:
@@ -1888,7 +1895,7 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo', 'error')
                             else:
-                                uploaded_url = upload_to_cloudinary(logo, 'uploads/logos', logger=app.logger)
+                                uploaded_url = upload_media(logo, 'uploads/logos', logger=app.logger)
                                 if uploaded_url:
                                     settings.shop_logo = uploaded_url
                                 else:
@@ -1899,7 +1906,7 @@ def create_app():
                         except Exception as e:
                             app.logger.error(f"Erreur enregistrement logo: {e}")
                             flash('Erreur lors de l\'upload du logo', 'error')
-                # Gestion du logo admin (logo spécifique pour l'interface admin)
+                # Gestion du logo admin (interface admin)
                 if 'admin_logo' in request.files:
                     admin_logo = request.files['admin_logo']
                     if admin_logo and admin_logo.filename:
@@ -1914,7 +1921,7 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo admin', 'error')
                             else:
-                                uploaded_url = upload_to_cloudinary(admin_logo, 'uploads/logos', logger=app.logger)
+                                uploaded_url = upload_media(admin_logo, 'uploads/logos', logger=app.logger)
                                 if uploaded_url:
                                     settings.admin_logo = uploaded_url
                                 else:
@@ -1941,7 +1948,7 @@ def create_app():
                             if ext not in allowed:
                                 flash('Type de fichier non autorisé pour le logo livreur', 'error')
                             else:
-                                uploaded_url = upload_to_cloudinary(deliverer_logo, 'uploads/logos', logger=app.logger)
+                                uploaded_url = upload_media(deliverer_logo, 'uploads/logos', logger=app.logger)
                                 if uploaded_url:
                                     settings.deliverer_logo = uploaded_url
                                 else:
@@ -2388,7 +2395,8 @@ def create_app():
                     ext = ext.lower().lstrip('.')
                     allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
                     if ext in allowed:
-                        uploaded_url = upload_to_cloudinary(profile_pic, 'uploads/profiles', logger=app.logger)
+                        # Photo livreur: priorité Supabase, sinon sauvegarde locale
+                        uploaded_url = upload_media(profile_pic, 'uploads/profiles', logger=app.logger)
                         if uploaded_url:
                             current_user.profile_picture = uploaded_url
                         else:
@@ -2662,7 +2670,8 @@ def create_app():
                 if size > 15 * 1024 * 1024:
                     flash('Fichier trop volumineux (max 15MB).', 'error')
                     return redirect(request.referrer or url_for('forum'))
-                uploaded_url = upload_to_cloudinary(file, 'uploads/forum', logger=app.logger, resource_type="auto")
+                # Pièce jointe forum: priorité Supabase, sinon fallback disque local
+                uploaded_url = upload_media(file, 'uploads/forum', logger=app.logger, resource_type="auto")
                 if uploaded_url:
                     attachment_path = uploaded_url
                 else:

@@ -42,7 +42,7 @@
         }
     </style>
 </head>
-<body class="{% if session.get('theme') == 'dark' %}dark{% endif %}">
+<body class="min-h-screen flex flex-col {% if session.get('theme') == 'dark' %}dark{% endif %}">
     <!-- Navigation -->
     <nav class="bg-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
@@ -236,7 +236,7 @@
     </nav>
 
     <!-- Contenu Principal -->
-    <main>
+    <main class="flex-1">
         {% block content %}{% endblock %}
     </main>
 

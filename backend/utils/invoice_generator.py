@@ -99,6 +99,7 @@ def generate_invoice_pdf(order, target_currency=None):
         return None
 
     logo_reader = _logo_reader()
+    # Logo: peut venir d'une URL (Supabase/public) ou du disque local (uploads/logos)
     if logo_reader:
         try:
             c.saveState()
