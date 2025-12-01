@@ -39,7 +39,8 @@ class Config:
     MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME')
+    # Permet d'utiliser un expéditeur validé (ex: noreply@votre-domaine.com)
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
     # Par défaut, autoriser l'envoi d'emails. Pour les environnements de dev,
     # vous pouvez mettre dans votre .env: MAIL_SUPPRESS_SEND=True
     MAIL_SUPPRESS_SEND = os.getenv('MAIL_SUPPRESS_SEND', 'False').lower() == 'true'
