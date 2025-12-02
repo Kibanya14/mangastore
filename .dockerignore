@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+ecom/
+venv/
+env/
+node_modules/
