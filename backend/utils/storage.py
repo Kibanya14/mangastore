@@ -4,22 +4,43 @@ import time
 import logging
 
 # Uploads persistants : Supabase Storage (public URL). Si les creds sont absents, on retourne None et l'appelant retombe sur le disque local.
-try:
-    from supabase import create_client
-except ImportError:  # pragma: no cover - optional dependency
-    create_client = None
+_supabase_create_client = None
+_storage3_create_client = None
+_storage3_sync_client_cls = None
 
 _supabase_client_cache = None
 _logger = logging.getLogger(__name__)
 
 
 def _supabase_configured():
-    return (
-        create_client is not None
-        and os.getenv("SUPABASE_URL")
-        and os.getenv("SUPABASE_KEY")
-        and os.getenv("SUPABASE_BUCKET")
-    )
+    return bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY") and os.getenv("SUPABASE_BUCKET"))
+
+
+def _import_supabase():
+    """Import paresseux des clients supabase/storage3 pour éviter un ImportError au chargement du module."""
+    global _supabase_create_client, _storage3_create_client, _storage3_sync_client_cls
+    if _supabase_create_client and _storage3_create_client and _storage3_sync_client_cls:
+        return True
+    try:
+        from supabase import create_client as _cc
+        from storage3 import create_client as _sc_create
+        from storage3 import SyncStorageClient as _sc_cls
+        _supabase_create_client = _cc
+        _storage3_create_client = _sc_create
+        _storage3_sync_client_cls = _sc_cls
+        return True
+    except Exception as exc:
+        try:
+            _logger.warning(
+                "Import Supabase/Storage3 a échoué: %s | url=%s key_set=%s bucket=%s",
+                exc,
+                os.getenv("SUPABASE_URL"),
+                bool(os.getenv("SUPABASE_KEY")),
+                os.getenv("SUPABASE_BUCKET"),
+            )
+        except Exception:
+            pass
+        return False
 
 
 def _mask(value: str) -> str:
@@ -46,8 +67,10 @@ def _get_supabase_client():
     if not _supabase_configured():
         # Pas de logger ici, log côté upload_media
         return None
+    if not _import_supabase():
+        return None
     try:
-        client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+        client = _supabase_create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
         bucket = os.getenv("SUPABASE_BUCKET")
         _supabase_client_cache = (client, bucket)
         return _supabase_client_cache
@@ -66,12 +89,41 @@ def _get_supabase_client():
         return None
 
 
+def _get_storage_only_client():
+    """Fallback minimal via storage3 si create_client échoue."""
+    if not _supabase_configured():
+        return None
+    if not _import_supabase():
+        return None
+    try:
+        storage_url = os.getenv("SUPABASE_URL").rstrip("/") + "/storage/v1"
+        client = _storage3_create_client(storage_url, os.getenv("SUPABASE_KEY"))
+        bucket = os.getenv("SUPABASE_BUCKET")
+        return (client, bucket)
+    except Exception as exc:
+        try:
+            _logger.warning(
+                "Storage3 fallback a échoué: %s | url=%s key_set=%s bucket=%s module=%s",
+                exc,
+                os.getenv("SUPABASE_URL"),
+                bool(os.getenv("SUPABASE_KEY")),
+                os.getenv("SUPABASE_BUCKET"),
+                bool(_storage3_create_client),
+            )
+        except Exception:
+            pass
+        return None
+
+
 def upload_media(file_storage, subfolder: str, logger=None, resource_type: str = "auto") -> str | None:
     """
     Upload vers Supabase Storage. Retourne une URL publique ou None si non dispo.
     Le code appelant peut retomber sur le stockage local en cas d'échec.
     """
     client_info = _get_supabase_client()
+    if not client_info:
+        # tenter fallback storage3
+        client_info = _get_storage_only_client()
     if not client_info:
         if logger:
             try:
@@ -107,8 +159,15 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
         return None
 
     try:
-        client.storage.from_(bucket).upload(path, data, file_options={"content-type": file_storage.mimetype})
-        url = client.storage.from_(bucket).get_public_url(path)
+        # client peut être un client Supabase ou Storage3 (create_client retourne un client storage direct)
+        if hasattr(client, "storage"):
+            client.storage.from_(bucket).upload(path, data, file_options={"content-type": file_storage.mimetype})
+            url = client.storage.from_(bucket).get_public_url(path)
+        elif hasattr(client, "from_"):
+            client.from_(bucket).upload(path, data, file_options={"content-type": file_storage.mimetype})
+            url = client.from_(bucket).get_public_url(path)
+        else:
+            raise RuntimeError("Client Supabase/Storage invalide (pas de méthode storage/from_)")
         return url
     except Exception as exc:  # pragma: no cover - external service
         if logger:
