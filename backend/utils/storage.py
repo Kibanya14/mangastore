@@ -79,7 +79,7 @@ def _get_supabase_client():
                 os.getenv("SUPABASE_URL"),
                 bool(os.getenv("SUPABASE_KEY")),
                 os.getenv("SUPABASE_BUCKET"),
-                bool(create_client),
+                bool(_supabase_create_client),
             )
         except Exception:
             pass
@@ -117,6 +117,7 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
     Upload vers Supabase Storage. Retourne une URL publique ou None si non dispo.
     Le code appelant peut retomber sur le stockage local en cas d'échec.
     """
+    _ = resource_type  # conservé pour compatibilité d'API (sinon warning paramètre inutilisé)
     client_info = _get_supabase_client()
     if not client_info:
         # tenter fallback storage3
@@ -127,7 +128,7 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
                 logger.warning(
                     "Supabase storage non configuré ou client indisponible, fallback local. "
                     f"url={os.getenv('SUPABASE_URL')} key_set={bool(os.getenv('SUPABASE_KEY'))} "
-                    f"bucket={os.getenv('SUPABASE_BUCKET')} module={bool(create_client)}"
+                    f"bucket={os.getenv('SUPABASE_BUCKET')} module={bool(_supabase_create_client)}"
                 )
             except Exception:
                 pass
