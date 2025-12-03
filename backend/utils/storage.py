@@ -6,7 +6,6 @@ import logging
 # Uploads persistants : Supabase Storage (public URL). Si les creds sont absents, on retourne None et l'appelant retombe sur le disque local.
 _supabase_create_client = None
 _storage3_create_client = None
-_storage3_sync_client_cls = None
 
 _supabase_client_cache = None
 _logger = logging.getLogger(__name__)
@@ -18,16 +17,14 @@ def _supabase_configured():
 
 def _import_supabase():
     """Import paresseux des clients supabase/storage3 pour éviter un ImportError au chargement du module."""
-    global _supabase_create_client, _storage3_create_client, _storage3_sync_client_cls
-    if _supabase_create_client and _storage3_create_client and _storage3_sync_client_cls:
+    global _supabase_create_client, _storage3_create_client
+    if _supabase_create_client and _storage3_create_client:
         return True
     try:
         from supabase import create_client as _cc
         from storage3 import create_client as _sc_create
-        from storage3 import SyncStorageClient as _sc_cls
         _supabase_create_client = _cc
         _storage3_create_client = _sc_create
-        _storage3_sync_client_cls = _sc_cls
         return True
     except Exception as exc:
         try:
@@ -97,7 +94,7 @@ def _get_storage_only_client():
         return None
     try:
         storage_url = os.getenv("SUPABASE_URL").rstrip("/") + "/storage/v1"
-        client = _storage3_create_client(storage_url, os.getenv("SUPABASE_KEY"))
+        client = _storage3_create_client(storage_url, os.getenv("SUPABASE_KEY"), is_async=False)
         bucket = os.getenv("SUPABASE_BUCKET")
         return (client, bucket)
     except Exception as exc:
