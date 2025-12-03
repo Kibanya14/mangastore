@@ -49,6 +49,12 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
     Le code appelant peut retomber sur le stockage local en cas d'échec.
     """
     client_info = _get_supabase_client()
+    if not client_info:
+        if logger:
+            try:
+                logger.warning("Supabase storage non configuré ou client indisponible, fallback local.")
+            except Exception:
+                pass
     if not client_info or not file_storage or not getattr(file_storage, "filename", None):
         return None
 
@@ -75,7 +81,7 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
     except Exception as exc:  # pragma: no cover - external service
         if logger:
             try:
-                logger.warning(f"Supabase upload failed: {exc}")
+                logger.warning(f"Supabase upload failed, fallback local: {exc}")
             except Exception:
                 pass
         return None
