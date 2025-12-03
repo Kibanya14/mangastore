@@ -10,7 +10,7 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=False)  # non unique pour autoriser mêmes emails entre rôles
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     is_super_admin = db.Column(db.Boolean, default=False)
     permissions = db.Column(db.Text)  # JSON des permissions
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)  # permet de bloquer/débloquer un compte
     is_deliverer = False
     
     # Relations
@@ -46,7 +47,7 @@ class Deliverer(UserMixin, db.Model):
     __tablename__ = 'deliverers'
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=False)  # non unique pour permettre partage d'email avec d'autres rôles
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)

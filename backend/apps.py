@@ -149,7 +149,8 @@ def create_app():
         'manage_categories': 'Gérer catégories',
         'manage_admins': 'Gérer admins',
         'manage_deliverers': 'Gérer livreurs',
-        'manage_settings': 'Gérer paramètres'
+        'manage_settings': 'Gérer paramètres',
+        'manage_clients': 'Gérer clients'
     }
 
     def _parse_permissions_field(raw: str):
@@ -1074,8 +1075,10 @@ def create_app():
                 flash('Veuillez remplir tous les champs obligatoires', 'error')
                 return redirect(url_for('client_register'))
             
-            if User.query.filter_by(email=email).first():
-                flash('Cet email est déjà utilisé', 'error')
+            # Un email ne peut pas être utilisé par un autre client (non-admin/non-super)
+            existing_client = User.query.filter_by(email=email, is_admin=False, is_super_admin=False).first()
+            if existing_client:
+                flash('Cet email est déjà utilisé par un client', 'error')
                 return redirect(url_for('client_register'))
             
             user = User(
@@ -1223,18 +1226,16 @@ def create_app():
             email = request.form.get('email')
             password = request.form.get('password')
 
-            user = User.query.filter_by(email=email).first()
+            user = User.query.filter_by(email=email, is_admin=False, is_super_admin=False).first()
 
-            # Refuser l'accès si c'est un compte admin
-            if user and (user.is_admin or user.is_super_admin):
-                flash('Accès réservé aux clients. Utilisez la page d\'administration.', 'error')
-                return redirect(url_for('client_login'))
-
-            if user and user.check_password(password):
+            if user and user.is_active and user.check_password(password):
                 login_user(user, remember=True)
                 flash(f'Bienvenue {user.first_name}!', 'success')
                 next_page = request.args.get('next')
                 return redirect(next_page) if next_page else redirect(url_for('index'))
+            elif user and not user.is_active:
+                flash('Compte bloqué. Contactez un administrateur.', 'error')
+                return redirect(url_for('client_login'))
 
             flash('Email ou mot de passe incorrect', 'error')
             return redirect(url_for('client_login'))
@@ -1371,17 +1372,23 @@ def create_app():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter(
+            User.email == email,
+            (User.is_admin.is_(True) | User.is_super_admin.is_(True))
+        ).first()
 
         # Seuls les comptes admin ou super_admin peuvent se connecter ici
         if not user or not (user.is_admin or user.is_super_admin):
             flash('Accès administrateur non autorisé', 'error')
             return redirect(url_for('admin_login_page'))
 
-        if user and user.check_password(password):
+        if user and user.is_active and user.check_password(password):
             login_user(user, remember=True)
             flash('Connexion administrateur réussie!', 'success')
             return redirect(url_for('admin_dashboard'))
+        elif user and not user.is_active:
+            flash('Compte administrateur bloqué. Contactez un super admin.', 'error')
+            return redirect(url_for('admin_login_page'))
 
         flash('Email ou mot de passe administrateur incorrect', 'error')
         return redirect(url_for('admin_login_page'))
@@ -1659,6 +1666,44 @@ def create_app():
             total_orders=total_orders,
             total_revenue=total_revenue
         )
+
+    @app.route('/admin/clients/<int:user_id>/block', methods=['POST'])
+    @login_required
+    @require_permission('manage_clients')
+    def admin_block_client(user_id):
+        client = User.query.filter_by(id=user_id, is_admin=False, is_super_admin=False).first_or_404()
+        client.is_active = False
+        db.session.commit()
+        flash('Client bloqué.', 'success')
+        return redirect(request.referrer or url_for('admin_clients'))
+
+    @app.route('/admin/clients/<int:user_id>/unblock', methods=['POST'])
+    @login_required
+    @require_permission('manage_clients')
+    def admin_unblock_client(user_id):
+        client = User.query.filter_by(id=user_id, is_admin=False, is_super_admin=False).first_or_404()
+        client.is_active = True
+        db.session.commit()
+        flash('Client débloqué.', 'success')
+        return redirect(request.referrer or url_for('admin_clients'))
+
+    @app.route('/admin/clients/<int:user_id>/delete', methods=['POST'])
+    @login_required
+    @require_permission('manage_clients')
+    def admin_delete_client(user_id):
+        client = User.query.filter_by(id=user_id, is_admin=False, is_super_admin=False).first_or_404()
+        try:
+            # Supprimer le panier et commandes liées ?
+            Cart.query.filter_by(user_id=client.id).delete()
+            Order.query.filter_by(user_id=client.id).delete()
+            db.session.delete(client)
+            db.session.commit()
+            flash('Client supprimé.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erreur suppression client {client.id}: {e}")
+            flash('Erreur lors de la suppression.', 'error')
+        return redirect(request.referrer or url_for('admin_clients'))
 
     @app.route('/admin/order/<int:order_id>')
     @login_required
@@ -2099,7 +2144,13 @@ def create_app():
         deliverer = Deliverer.query.get_or_404(deliverer_id)
         deliverer.first_name = request.form.get('first_name', deliverer.first_name)
         deliverer.last_name = request.form.get('last_name', deliverer.last_name)
-        deliverer.email = request.form.get('email', deliverer.email)
+        new_email = request.form.get('email', deliverer.email)
+        if new_email != deliverer.email:
+            conflict = Deliverer.query.filter(Deliverer.email == new_email, Deliverer.id != deliverer.id).first()
+            if conflict:
+                flash('Un autre livreur utilise déjà cet email.', 'error')
+                return redirect(url_for('admin_deliverers'))
+            deliverer.email = new_email
         deliverer.phone = request.form.get('phone', deliverer.phone)
         deliverer.is_active = bool(request.form.get('is_active'))
         form_status = request.form.get('status')
@@ -2867,8 +2918,12 @@ def create_app():
                 flash('Veuillez remplir tous les champs', 'error')
                 return redirect(url_for('admin_manage_admins'))
             
-            if User.query.filter_by(email=email).first():
-                flash('Cet email est déjà utilisé', 'error')
+            existing_admin = User.query.filter(
+                User.email == email,
+                (User.is_admin.is_(True) | User.is_super_admin.is_(True))
+            ).first()
+            if existing_admin:
+                flash('Cet email est déjà utilisé par un administrateur', 'error')
                 return redirect(url_for('admin_manage_admins'))
             
             admin = User(
