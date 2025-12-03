@@ -235,7 +235,7 @@ def create_app():
             <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
                 <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:18px 24px;">
                     <h2 style="margin:0;font-size:20px;">{title}</h2>
-                    <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Manga Store (Maniana Ngayo)</p>
+                    <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Manga Store rdc</p>
                 </div>
                 <div style="padding:20px;font-size:14px;line-height:1.6;">
                     {safe_body}
@@ -321,7 +321,7 @@ def create_app():
             resp = requests.get(
                 "https://nominatim.openstreetmap.org/search",
                 params={"q": address, "format": "json", "limit": 1},
-                headers={"User-Agent": "MangaStore/1.0 (Maniana Ngayo)"},
+                headers={"User-Agent": "MangaStore rdc"},
                 timeout=5
             )
             data = resp.json()

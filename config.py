@@ -20,6 +20,16 @@ class Config:
         _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Limiter le nombre de connexions (évite "max clients reached" sur Supabase/pgbouncer)
+    _pool_size = int(os.getenv('DB_POOL_SIZE', '5'))
+    _max_overflow = int(os.getenv('DB_MAX_OVERFLOW', '0'))
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": _pool_size,
+        "max_overflow": _max_overflow,
+        "pool_pre_ping": True,
+        "pool_recycle": int(os.getenv('DB_POOL_RECYCLE', '1800')),
+        "pool_timeout": int(os.getenv('DB_POOL_TIMEOUT', '5')),
+    }
     _static_folder = os.getenv('STATIC_FOLDER', os.path.join(BASEDIR, 'frontend', 'static'))
     if not os.path.isabs(_static_folder):
         _static_folder = os.path.join(BASEDIR, _static_folder)
