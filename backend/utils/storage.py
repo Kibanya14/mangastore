@@ -1,6 +1,7 @@
 import os
 import secrets
 import time
+import logging
 
 # Uploads persistants : Supabase Storage (public URL). Si les creds sont absents, on retourne None et l'appelant retombe sur le disque local.
 try:
@@ -9,6 +10,7 @@ except ImportError:  # pragma: no cover - optional dependency
     create_client = None
 
 _supabase_client_cache = None
+_logger = logging.getLogger(__name__)
 
 
 def _supabase_configured():
@@ -18,6 +20,15 @@ def _supabase_configured():
         and os.getenv("SUPABASE_KEY")
         and os.getenv("SUPABASE_BUCKET")
     )
+
+
+def _mask(value: str) -> str:
+    """Masque une valeur sensible pour les logs (garde les 4 premiers/derniers caractères)."""
+    if not value:
+        return ""
+    if len(value) <= 8:
+        return "***"
+    return value[:4] + "***" + value[-4:]
 
 
 def _supabase_path(subfolder: str, filename: str) -> str:
@@ -33,13 +44,25 @@ def _get_supabase_client():
     if _supabase_client_cache:
         return _supabase_client_cache
     if not _supabase_configured():
+        # Pas de logger ici, log côté upload_media
         return None
     try:
         client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
         bucket = os.getenv("SUPABASE_BUCKET")
         _supabase_client_cache = (client, bucket)
         return _supabase_client_cache
-    except Exception:
+    except Exception as exc:
+        try:
+            _logger.warning(
+                "Supabase create_client a échoué: %s | url=%s key_set=%s bucket=%s module=%s",
+                exc,
+                os.getenv("SUPABASE_URL"),
+                bool(os.getenv("SUPABASE_KEY")),
+                os.getenv("SUPABASE_BUCKET"),
+                bool(create_client),
+            )
+        except Exception:
+            pass
         return None
 
 
@@ -52,7 +75,11 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
     if not client_info:
         if logger:
             try:
-                logger.warning("Supabase storage non configuré ou client indisponible, fallback local.")
+                logger.warning(
+                    "Supabase storage non configuré ou client indisponible, fallback local. "
+                    f"url={os.getenv('SUPABASE_URL')} key_set={bool(os.getenv('SUPABASE_KEY'))} "
+                    f"bucket={os.getenv('SUPABASE_BUCKET')} module={bool(create_client)}"
+                )
             except Exception:
                 pass
     if not client_info or not file_storage or not getattr(file_storage, "filename", None):
@@ -68,8 +95,13 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
         file_storage.stream.seek(0)
         data = file_storage.read()
         file_storage.stream.seek(0)
-    except Exception:
+    except Exception as exc:
         data = None
+        if logger:
+            try:
+                logger.warning(f"Supabase upload: impossible de lire le fichier avant upload: {exc}")
+            except Exception:
+                pass
 
     if not data:
         return None
@@ -81,7 +113,14 @@ def upload_media(file_storage, subfolder: str, logger=None, resource_type: str =
     except Exception as exc:  # pragma: no cover - external service
         if logger:
             try:
-                logger.warning(f"Supabase upload failed, fallback local: {exc}")
+                logger.warning(
+                    "Supabase upload failed, fallback local: %s | path=%s bucket=%s url=%s key_prefix=%s",
+                    exc,
+                    path,
+                    bucket,
+                    os.getenv("SUPABASE_URL"),
+                    _mask(os.getenv("SUPABASE_KEY") or "")
+                )
             except Exception:
                 pass
         return None
