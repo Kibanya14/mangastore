@@ -1093,6 +1093,7 @@ def create_app():
             
             # Email de bienvenue
             try:
+                shop_url = _build_app_url('/')
                 send_email(
                     to=email,
                     subject='👋 Bienvenue sur Manga Store!',
@@ -1102,7 +1103,7 @@ def create_app():
                     Bienvenue sur Manga Store! Votre compte client a été créé avec succès.
                     
                     Vous pouvez maintenant:
-                    • Parcourir notre collection de mangas
+                    • Parcourir notre collection de produits ({shop_url})
                     • Ajouter des articles à votre panier
                     • Passer des commandes
                     • Suivre vos achats

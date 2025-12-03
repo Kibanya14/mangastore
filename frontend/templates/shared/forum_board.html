@@ -133,7 +133,7 @@
                     {% endfor %}
                 </div>
                 <div class="flex items-center gap-3 text-[11px] text-gray-500">
-                    <span class="flex items-center gap-1"><i class="fas fa-music"></i>Vocal ≤20s</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-music"></i>Vocal ≤5 min</span>
                     <span class="flex items-center gap-1"><i class="fas fa-photo-film"></i>Images / GIF / Vidéos</span>
                     <span id="record-status" class="text-purple-600 hidden flex items-center gap-1"><i class="fas fa-circle-notch fa-spin"></i>Enregistrement...</span>
                 </div>
@@ -223,7 +223,7 @@
     let recordTimeout = null;
 
     function setRecording(isRecording){
-        if (!statusEl) return;
+        if (!statusEl || !recordBtn) return;
         statusEl.classList.toggle('hidden', !isRecording);
         recordBtn.classList.toggle('bg-purple-100', isRecording);
         recordBtn.classList.toggle('border-purple-300', isRecording);
@@ -248,7 +248,7 @@
             };
             mediaRecorder.start();
             setRecording(true);
-            recordTimeout = setTimeout(() => stopRecording(), 20000);
+            recordTimeout = setTimeout(() => stopRecording(), 300000); // 5 minutes max
         } catch (err) {
             console.error(err);
             alert('Impossible d\'accéder au micro. Vérifiez les permissions.');
@@ -327,7 +327,10 @@
     const socket = window.io ? window.io({ transports: ['websocket'] }) : null;
     const peers = {};
     const localMedia = { stream: null };
-    const stunServers = {{ ice_servers|tojson|safe if ice_servers else '[{"urls":"stun:stun.l.google.com:19302"}]' }};
+    const stunServers = {{ ice_servers|tojson|safe if ice_servers else '[]' }};
+    if (!Array.isArray(stunServers) || stunServers.length === 0) {
+        stunServers.push({ urls: "stun:stun.l.google.com:19302" });
+    }
     const currentUserId = "{{ current_user_id }}";
     const currentUserName = "{{ current_user_name }}";
     const overlay = document.getElementById('call-overlay');
@@ -338,7 +341,7 @@
     const btnHang = document.getElementById('call-hang');
     const btnMute = document.getElementById('call-mute');
     const btnCam = document.getElementById('call-camera');
-    const statusEl = document.getElementById('call-status');
+    const callStatusEl = document.getElementById('call-status');
     const peerNameEl = document.getElementById('call-peer-name');
     let currentTarget = null;
     let withVideo = false;
@@ -374,7 +377,7 @@
         if (!overlay) return;
         overlay.classList.remove('hidden');
         peerNameEl.textContent = name || '';
-        statusEl.textContent = mode;
+        if (callStatusEl) callStatusEl.textContent = mode;
         [btnAccept, btnReject, btnHang, btnMute, btnCam].forEach(btn => btn && btn.classList.add('hidden'));
         if (mode === 'Entrant') {
             btnAccept.classList.remove('hidden');
