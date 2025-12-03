@@ -99,6 +99,19 @@ def create_app():
     login_manager.login_view = 'client_login'
     login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
     login_manager.login_message_category = 'error'
+
+    @login_manager.unauthorized_handler
+    def handle_unauthorized():
+        """Redirige vers la page de login appropriée selon l'espace (admin/livreur/client)."""
+        path = request.path or ''
+        if path.startswith('/admin'):
+            flash('Veuillez vous connecter en tant qu\'administrateur.', 'error')
+            return redirect(url_for('admin_login_page'))
+        if path.startswith('/livreur'):
+            flash('Veuillez vous connecter en tant que livreur.', 'error')
+            return redirect(url_for('deliverer_login_page'))
+        flash('Veuillez vous connecter pour accéder à cette page.', 'error')
+        return redirect(url_for('client_login'))
     
     mail = Mail(app)
 
@@ -1075,10 +1088,9 @@ def create_app():
                 flash('Veuillez remplir tous les champs obligatoires', 'error')
                 return redirect(url_for('client_register'))
             
-            # Un email ne peut pas être utilisé par un autre client (non-admin/non-super)
-            existing_client = User.query.filter_by(email=email, is_admin=False, is_super_admin=False).first()
-            if existing_client:
-                flash('Cet email est déjà utilisé par un client', 'error')
+            # Un email ne peut pas être utilisé par un autre compte (unicité globale)
+            if User.query.filter_by(email=email).first():
+                flash('Cet email est déjà utilisé', 'error')
                 return redirect(url_for('client_register'))
             
             user = User(
@@ -1218,7 +1230,7 @@ def create_app():
     @app.route('/login', methods=['GET', 'POST'])
     def client_login():
         if current_user.is_authenticated:
-            if current_user.is_admin:
+            if current_user.is_admin or current_user.is_super_admin:
                 return redirect(url_for('admin_dashboard'))
             return redirect(url_for('index'))
             
@@ -1251,15 +1263,15 @@ def create_app():
     @app.route('/profile')
     @login_required
     def client_profile():
-        if current_user.is_admin:
+        if current_user.is_admin or current_user.is_super_admin:
             flash('Accès réservé aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
         return render_template('client/profile.html')
-    
+
     @app.route('/profile/update', methods=['POST'])
     @login_required
     def update_profile():
-        if current_user.is_admin:
+        if current_user.is_admin or current_user.is_super_admin:
             flash('Action réservée aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
             
@@ -1343,12 +1355,42 @@ def create_app():
 
         return redirect(url_for('client_profile'))
 
+    @app.route('/profile/delete_account', methods=['POST'])
+    @login_required
+    def delete_own_account():
+        if current_user.is_admin or current_user.is_super_admin:
+            flash('Action réservée aux clients.', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        password = request.form.get('current_password', '')
+        confirm_text = request.form.get('confirm_delete', '').strip().upper()
+
+        if not current_user.check_password(password):
+            flash('Mot de passe incorrect.', 'error')
+            return redirect(url_for('client_profile'))
+
+        if confirm_text != 'SUPPRIMER':
+            flash('Merci de taper "SUPPRIMER" pour confirmer la suppression.', 'error')
+            return redirect(url_for('client_profile'))
+
+        try:
+            _delete_customer_account(current_user)
+            db.session.commit()
+            logout_user()
+            flash('Votre compte a été supprimé avec succès.', 'success')
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erreur suppression compte client {current_user.id}: {e}")
+            flash('Erreur lors de la suppression du compte.', 'error')
+            return redirect(url_for('client_profile'))
+
     @app.route('/order/<int:order_id>')
     @login_required
     def view_order(order_id):
         order = Order.query.get_or_404(order_id)
         # Admins are redirected to admin detail view
-        if current_user.is_authenticated and current_user.is_admin:
+        if current_user.is_authenticated and (current_user.is_admin or current_user.is_super_admin):
             return redirect(url_for('admin_order_detail', order_id=order.id))
 
         # Allow only the owner to view
@@ -1363,7 +1405,7 @@ def create_app():
     
     @app.route('/admin')
     def admin_login_page():
-        if current_user.is_authenticated and current_user.is_admin:
+        if current_user.is_authenticated and (current_user.is_admin or current_user.is_super_admin):
             return redirect(url_for('admin_dashboard'))
         return render_template('admin/loginadmin.html')
     
@@ -1402,15 +1444,15 @@ def create_app():
     @app.route('/admin/about')
     @login_required
     def admin_about():
-        if not current_user.is_admin:
+        if not (current_user.is_admin or current_user.is_super_admin):
             flash('Accès réservé aux administrateurs', 'error')
             return redirect(url_for('index'))
         return render_template('admin/about.html')
-    
+
     @app.route('/admin/logout')
     @login_required
     def admin_logout():
-        if not current_user.is_admin:
+        if not (current_user.is_admin or current_user.is_super_admin):
             flash('Accès non autorisé', 'error')
             return redirect(url_for('index'))
         logout_user()
@@ -1420,7 +1462,7 @@ def create_app():
     @app.route('/admin/dashboard')
     @login_required
     def admin_dashboard():
-        if not current_user.is_admin:
+        if not (current_user.is_admin or current_user.is_super_admin):
             flash('Accès réservé aux administrateurs', 'error')
             return redirect(url_for('index'))
 
@@ -1693,22 +1735,28 @@ def create_app():
         flash('Client débloqué.', 'success')
         return redirect(request.referrer or url_for('admin_clients'))
 
+    def _delete_customer_account(client: User):
+        """Supprime toutes les données liées à un client avant suppression."""
+        carts = Cart.query.filter_by(user_id=client.id).all()
+        for cart in carts:
+            db.session.delete(cart)  # cascade vers cart_items
+
+        orders = Order.query.filter_by(user_id=client.id).all()
+        for order in orders:
+            db.session.delete(order)  # cascade vers order_items et delivery_assignments
+
+        ForumMessage.query.filter_by(user_id=client.id).delete(synchronize_session=False)
+        AccessRequest.query.filter(
+            (AccessRequest.admin_id == client.id) | (AccessRequest.processed_by == client.id)
+        ).delete(synchronize_session=False)
+
+        db.session.delete(client)
+
     @app.route('/admin/clients/<int:user_id>/delete', methods=['POST'])
     @login_required
     @require_permission('manage_clients')
     def admin_delete_client(user_id):
-        client = User.query.filter_by(id=user_id, is_admin=False, is_super_admin=False).first_or_404()
-        try:
-            # Supprimer le panier et commandes liées ?
-            Cart.query.filter_by(user_id=client.id).delete()
-            Order.query.filter_by(user_id=client.id).delete()
-            db.session.delete(client)
-            db.session.commit()
-            flash('Client supprimé.', 'success')
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Erreur suppression client {client.id}: {e}")
-            flash('Erreur lors de la suppression.', 'error')
+        flash('La suppression définitive doit être effectuée par le client depuis son profil.', 'error')
         return redirect(request.referrer or url_for('admin_clients'))
 
     @app.route('/admin/order/<int:order_id>')
@@ -2924,12 +2972,9 @@ def create_app():
                 flash('Veuillez remplir tous les champs', 'error')
                 return redirect(url_for('admin_manage_admins'))
             
-            existing_admin = User.query.filter(
-                User.email == email,
-                (User.is_admin.is_(True) | User.is_super_admin.is_(True))
-            ).first()
+            existing_admin = User.query.filter_by(email=email).first()
             if existing_admin:
-                flash('Cet email est déjà utilisé par un administrateur', 'error')
+                flash('Cet email est déjà utilisé', 'error')
                 return redirect(url_for('admin_manage_admins'))
             
             admin = User(

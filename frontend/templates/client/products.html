@@ -129,34 +129,41 @@
                         </div>
 
                         <!-- Actions -->
-                        {% if current_user.is_authenticated and not current_user.is_admin and product.quantity > 0 %}
-                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="flex items-center space-x-2">
-                                <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" 
-                                       class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm">
-                                <button type="submit" 
-                                        class="flex-1 bg-purple-600 text-white py-2 px-3 rounded-lg hover:bg-purple-700 transition flex items-center justify-center space-x-1 text-sm">
-                                    <i class="fas fa-cart-plus"></i>
-                                    <span>Ajouter</span>
-                                </button>
+                        <div class="space-y-2">
+                            <a href="{{ url_for('product_detail', product_id=product.id) }}" 
+                               class="block w-full border border-purple-200 text-purple-700 py-2 px-3 rounded-lg hover:bg-purple-50 transition text-center text-sm font-semibold">
+                                Voir les détails
+                            </a>
+
+                            {% if current_user.is_authenticated and not current_user.is_admin and product.quantity > 0 %}
+                            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="flex items-center space-x-2">
+                                    <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" 
+                                           class="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm">
+                                    <button type="submit" 
+                                            class="flex-1 bg-purple-600 text-white py-2 px-3 rounded-lg hover:bg-purple-700 transition flex items-center justify-center space-x-1 text-sm">
+                                        <i class="fas fa-cart-plus"></i>
+                                        <span>Ajouter</span>
+                                    </button>
+                                </div>
+                            </form>
+                            {% elif not current_user.is_authenticated %}
+                            <a href="{{ url_for('client_login') }}" 
+                               class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center text-sm">
+                                Se connecter
+                            </a>
+                            {% elif current_user.is_admin %}
+                            <div class="text-center text-xs text-gray-500 py-2 border-t">
+                                Mode administration
                             </div>
-                        </form>
-                        {% elif not current_user.is_authenticated %}
-                        <a href="{{ url_for('client_login') }}" 
-                           class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center text-sm">
-                            Se connecter
-                        </a>
-                        {% elif current_user.is_admin %}
-                        <div class="text-center text-xs text-gray-500 py-2 border-t">
-                            Mode administration
+                            {% else %}
+                            <button disabled 
+                                    class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed text-sm">
+                                Indisponible
+                            </button>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <button disabled 
-                                class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed text-sm">
-                            Indisponible
-                        </button>
-                        {% endif %}
                     </div>
                 </div>
                 {% else %}

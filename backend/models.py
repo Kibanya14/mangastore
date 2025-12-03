@@ -10,7 +10,7 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), nullable=False)  # non unique pour autoriser mêmes emails entre rôles
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
@@ -47,7 +47,7 @@ class Deliverer(UserMixin, db.Model):
     __tablename__ = 'deliverers'
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), nullable=False)  # non unique pour permettre partage d'email avec d'autres rôles
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)

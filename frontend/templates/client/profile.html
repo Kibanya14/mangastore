@@ -41,6 +41,11 @@
                         <i class="fas fa-lock w-5 text-center"></i>
                         <span>Sécurité</span>
                     </a>
+                    <a href="#delete-account" 
+                       class="flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-red-50 hover:text-red-700 transition">
+                        <i class="fas fa-user-slash w-5 text-center"></i>
+                        <span>Supprimer mon compte</span>
+                    </a>
                 </nav>
             </div>
         </div>
@@ -262,6 +267,43 @@
                                 class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
                             <i class="fas fa-key"></i>
                             <span>Changer le mot de passe</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Suppression du compte -->
+            <div id="delete-account" class="bg-white rounded-xl shadow-md p-6 border border-red-200">
+                <h3 class="text-xl font-semibold text-red-700 mb-4 flex items-center space-x-2">
+                    <i class="fas fa-user-slash"></i>
+                    <span>Supprimer mon compte</span>
+                </h3>
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-red-800">
+                    <p class="font-semibold">Attention : action irréversible</p>
+                    <ul class="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li>Votre profil, vos paniers, vos commandes et vos messages seront supprimés.</li>
+                        <li>Vous serez automatiquement déconnecté.</li>
+                    </ul>
+                </div>
+                <form action="{{ url_for('delete_own_account') }}" method="POST" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                        <input type="password" name="current_password" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmez en tapant "SUPPRIMER"</label>
+                        <input type="text" name="confirm_delete" placeholder="SUPPRIMER" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 uppercase">
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <p class="text-sm text-gray-600">Si vous souhaitez revenir plus tard, vous devrez recréer un compte.</p>
+                        <button type="submit"
+                                class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2"
+                                onclick="return confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est définitive.')">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Supprimer mon compte</span>
                         </button>
                     </div>
                 </form>
