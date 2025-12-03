@@ -31,6 +31,8 @@ class Config:
         _upload_folder = os.path.join(BASEDIR, _upload_folder)
     UPLOAD_FOLDER = _upload_folder
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    APP_BASE_URL = os.getenv('APP_BASE_URL')  # ex: https://mangastorerdc.fly.dev
+    PREFERRED_URL_SCHEME = os.getenv('PREFERRED_URL_SCHEME', 'https')
     
     # Configuration Email
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')

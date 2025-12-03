@@ -26,6 +26,7 @@ from sqlalchemy.orm import joinedload
 import requests
 from threading import Timer
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from urllib.parse import urljoin
 
 # Patch standard eventlet après avoir configuré ENV
 eventlet.monkey_patch()
@@ -246,6 +247,23 @@ def create_app():
         </div>
         """
 
+    def _build_app_url(path: str = '/') -> str:
+        """Construit une URL absolue basée sur APP_BASE_URL (ou l'hôte courant)."""
+        if not path:
+            path = '/'
+        if str(path).startswith(('http://', 'https://')):
+            return path
+        base = app.config.get('APP_BASE_URL')
+        try:
+            if not base:
+                base = request.url_root
+        except RuntimeError:
+            base = None
+        if not base:
+            return path
+        base = base.rstrip('/') + '/'
+        return urljoin(base, str(path).lstrip('/'))
+
     def send_email(to, subject, body, html_body=None):
         """Fonction améliorée pour l'envoi d'emails (gabarit unifié)."""
         try:
@@ -290,7 +308,7 @@ def create_app():
 
     def send_password_reset_email(user):
         token = generate_password_reset_token(user.email)
-        reset_url = url_for('reset_password', token=token, _external=True)
+        reset_url = _build_app_url(url_for('reset_password', token=token))
         subject = 'Réinitialisation du mot de passe - Manga Store'
         body = f"Bonjour {user.first_name},\n\nPour réinitialiser votre mot de passe, cliquez sur le lien suivant:\n{reset_url}\n\nSi vous n'avez pas demandé cette réinitialisation, ignorez ce message.\n"
         send_email(user.email, subject, body)
@@ -696,10 +714,11 @@ def create_app():
 
                 # Envoi d'email de bienvenue (tentative)
                 try:
+                    admin_login_url = _build_app_url('admin')
                     send_email(
                         to=email,
                         subject='🎉 Bienvenue sur Manga Store - Super Admin',
-                        body=f"Bonjour {first_name},\n\nVotre compte Super Administrateur a été créé avec succès.\n\nConnectez-vous: http://localhost:5000/admin",
+                        body=f"Bonjour {first_name},\n\nVotre compte Super Administrateur a été créé avec succès.\n\nConnectez-vous: {admin_login_url}",
                         html_body=None
                     )
                 except Exception as e:
@@ -2053,19 +2072,18 @@ def create_app():
 
         # Envoyer email avec identifiants
         try:
+            deliverer_url = _build_app_url('livreur')
             send_email(
                 to=email,
                 subject='Vous êtes livreur Manga Store',
-                body=f"""
-                Bonjour {first_name},
-
-                Un compte livreur a été créé pour vous.
-                Espace : http://localhost:5000/livreur
-                Email : {email}
-                Mot de passe temporaire : {password}
-
-                Merci de vous connecter et changer votre mot de passe dans votre profil.
-                """
+                body=(
+                    f"Bonjour {first_name},\n\n"
+                    f"Un compte livreur a été créé pour vous.\n"
+                    f"Espace : {deliverer_url}\n"
+                    f"Email : {email}\n"
+                    f"Mot de passe temporaire : {password}\n\n"
+                    "Merci de vous connecter et changer votre mot de passe dans votre profil."
+                )
             )
         except Exception as e:
             app.logger.error(f"Erreur envoi email livreur: {e}")
@@ -2866,10 +2884,16 @@ def create_app():
             
             # Envoyer un email de bienvenue au nouvel admin (NE PAS envoyer le mot de passe en clair)
             try:
+                admin_url = _build_app_url('admin')
                 send_email(
                     to=email,
                     subject='🔧 Vous êtes maintenant administrateur de Manga Store',
-                    body=f"Bonjour {first_name},\n\nVous avez été ajouté comme administrateur de Manga Store.\n\nConnectez-vous: http://localhost:5000/admin\n\nVeuillez changer votre mot de passe après la première connexion.",
+                    body=(
+                        f"Bonjour {first_name},\n\n"
+                        "Vous avez été ajouté comme administrateur de Manga Store.\n\n"
+                        f"Connectez-vous: {admin_url}\n\n"
+                        "Veuillez changer votre mot de passe après la première connexion."
+                    ),
                 )
             except Exception as e:
                 app.logger.warning(f"Erreur envoi email admin: {e}")

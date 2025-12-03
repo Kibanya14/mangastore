@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper pour utiliser flyctl installé dans ~/.fly depuis ce repo
+exec "$HOME/.fly/bin/flyctl" "$@"
