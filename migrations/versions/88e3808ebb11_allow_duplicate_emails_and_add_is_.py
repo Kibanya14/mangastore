@@ -22,9 +22,11 @@ def upgrade():
         batch_op.drop_constraint(batch_op.f('deliverers_email_key'), type_='unique')
 
     with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('is_active', sa.Boolean(), nullable=True))
+        batch_op.add_column(sa.Column('is_active', sa.Boolean(), server_default=sa.true(), nullable=False))
         batch_op.drop_constraint(batch_op.f('users_email_key'), type_='unique')
 
+    # Mettre is_active à TRUE pour les enregistrements existants
+    op.execute("UPDATE users SET is_active = TRUE WHERE is_active IS NULL")
     # ### end Alembic commands ###
 
 

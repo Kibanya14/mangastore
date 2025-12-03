@@ -1382,6 +1382,12 @@ def create_app():
             flash('Accès administrateur non autorisé', 'error')
             return redirect(url_for('admin_login_page'))
 
+        # Super admin : bypass blocage pour éviter de se verrouiller soi-même
+        if user and user.is_super_admin and user.check_password(password):
+            login_user(user, remember=True)
+            flash('Connexion super administrateur réussie!', 'success')
+            return redirect(url_for('admin_dashboard'))
+
         if user and user.is_active and user.check_password(password):
             login_user(user, remember=True)
             flash('Connexion administrateur réussie!', 'success')
