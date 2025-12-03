@@ -8,9 +8,9 @@
         <div class="space-y-4">
             {% set img = get_first_image_url(product) %}
             {% if img %}
-            <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-80 object-cover rounded-lg border">
+            <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-72 md:h-80 object-contain rounded-lg border bg-gray-50">
             {% else %}
-            <div class="w-full h-80 bg-gray-100 flex items-center justify-center rounded-lg">
+            <div class="w-full h-72 md:h-80 bg-gray-100 flex items-center justify-center rounded-lg">
                 <i class="fas fa-book text-5xl text-gray-400"></i>
             </div>
             {% endif %}

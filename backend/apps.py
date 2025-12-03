@@ -2892,8 +2892,11 @@ def create_app():
                     body=(
                         f"Bonjour {first_name},\n\n"
                         "Vous avez été ajouté comme administrateur de Manga Store.\n\n"
-                        f"Connectez-vous: {admin_url}\n\n"
-                        "Veuillez changer votre mot de passe après la première connexion."
+                        f"Identifiants de première connexion :\n"
+                        f"- Email : {email}\n"
+                        f"- Mot de passe : {password}\n\n"
+                        f"Connectez-vous : {admin_url}\n\n"
+                        "Pensez à changer votre mot de passe après la première connexion."
                     ),
                 )
             except Exception as e:
