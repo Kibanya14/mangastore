@@ -48,14 +48,9 @@ def generate_invoice_pdf(order, target_currency=None):
         except Exception:
             return str(amount)
     
-    # Bandeau d'en-tête doux avec des formes pour donner du caractère
-    header_height = 260
-    c.setFillColor(colors.HexColor("#f8fafc"))
-    c.rect(0, height - header_height, width, header_height, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#e0f2fe"))
-    c.circle(width - 90, height - 60, 90, stroke=0, fill=1)
-    c.setFillColor(colors.HexColor("#cffafe"))
-    c.circle(width - 190, height - 140, 70, stroke=0, fill=1)
+    # Mise en page allégée : pas de grands aplats, logo réduit à côté des infos boutique
+    margin_x = 40
+    margin_top = height - 60
     c.setFillColor(primary_color)
     
     shop_name = settings.shop_name if settings and settings.shop_name else "Manga Store"
@@ -63,15 +58,13 @@ def generate_invoice_pdf(order, target_currency=None):
     shop_email = settings.shop_email if settings and settings.shop_email else ""
     shop_phone = settings.shop_phone if settings and settings.shop_phone else ""
     
-    margin_x = 50
-    right_col_x = width / 2 + 60
+    right_col_x = width / 2 + 40
     
-    # Logo centré en haut de page
-    logo_size = 100
+    # Logo réduit à gauche des infos boutique
+    logo_size = 60
     logo_radius = logo_size / 2
-    logo_center_y = height - 70
-    logo_x = (width - logo_size) / 2
-    logo_y = logo_center_y + logo_radius
+    logo_x = margin_x
+    logo_y = margin_top
     def _logo_reader():
         uploads = None
         try:
@@ -99,45 +92,30 @@ def generate_invoice_pdf(order, target_currency=None):
         return None
 
     logo_reader = _logo_reader()
-    # Logo: peut venir d'une URL (Supabase/public) ou du disque local (uploads/logos)
+    shop_block_top = margin_top
+
+    # Bloc gauche: logo + infos boutique alignés
+    current_y = shop_block_top
     if logo_reader:
         try:
-            c.saveState()
-            c.setFillColor(colors.white)
-            c.setStrokeColor(accent_color)
-            c.setLineWidth(3)
-            c.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius + 4, stroke=1, fill=1)
-            c.restoreState()
-            
-            c.saveState()
-            path = c.beginPath()
-            path.circle(logo_x + logo_radius, logo_y - logo_radius, logo_radius)
-            c.clipPath(path, stroke=0)
-            c.drawImage(logo_reader, logo_x, logo_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
-            c.restoreState()
+            c.drawImage(logo_reader, logo_x, current_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
         except Exception:
             pass
-    
-    # Positionnement des blocs d'en-tête
-    shop_block_top = logo_center_y - logo_radius - 25
-    
-    # Informations boutique (à gauche)
+    text_x = logo_x + logo_size + 10
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(margin_x, shop_block_top, "BOUTIQUE")
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(margin_x, shop_block_top - 14, shop_name)
+    c.drawString(text_x, current_y - 4, shop_name)
     c.setFont("Helvetica", 10)
-    shop_y = shop_block_top - 28
+    current_y -= 18
     for line in textwrap.wrap(shop_address, width=60):
-        c.drawString(margin_x, shop_y, line)
-        shop_y -= 10
+        c.drawString(text_x, current_y, line)
+        current_y -= 10
     if shop_email:
-        c.drawString(margin_x, shop_y, f"Email: {shop_email}")
-        shop_y -= 12
+        c.drawString(text_x, current_y, f"Email: {shop_email}")
+        current_y -= 12
     if shop_phone:
-        c.drawString(margin_x, shop_y, f"Tél: {shop_phone}")
-        shop_y -= 12
-    shop_y -= 4
+        c.drawString(text_x, current_y, f"Tél: {shop_phone}")
+        current_y -= 12
+    shop_y = current_y - 6
     
     # Calcul de l'échéance
     try:
@@ -146,24 +124,24 @@ def generate_invoice_pdf(order, target_currency=None):
         due_date = ""
     
     # Bloc facture (à droite)
-    meta_y = shop_block_top + 14
+    meta_y = shop_block_top
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_col_x, meta_y, "FACTURE PROFORMA")
+    c.drawString(right_col_x, meta_y, "FACTURE")
     c.setFont("Helvetica", 10)
-    meta_y -= 20
+    meta_y -= 18
     c.drawString(right_col_x, meta_y, f"N°: {order.order_number}")
-    meta_y -= 15
+    meta_y -= 14
     c.drawString(right_col_x, meta_y, f"Date: {order.created_at.strftime('%d/%m/%Y')}")
-    meta_y -= 15
+    meta_y -= 14
     c.drawString(right_col_x, meta_y, f"Échéance: {due_date}")
-    meta_y -= 20
+    meta_y -= 16
     c.setFillColor(accent_color)
-    c.roundRect(right_col_x - 6, meta_y - 6, 190, 22, 8, stroke=0, fill=1)
+    c.roundRect(right_col_x - 6, meta_y - 6, 160, 20, 6, stroke=0, fill=1)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(right_col_x, meta_y + 3, f"Statut: {order.status.upper()}")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(right_col_x, meta_y + 2, f"Statut: {order.status.upper()}")
     c.setFillColor(primary_color)
-    meta_bottom_y = meta_y - 12
+    meta_bottom_y = meta_y - 10
     
     # Informations client (sous la boutique)
     c.setFont("Helvetica-Bold", 12)
@@ -179,8 +157,8 @@ def generate_invoice_pdf(order, target_currency=None):
         c.drawString(margin_x, shop_y, f"Adresse: {line}" if idx == 0 else f"        {line}")
         shop_y -= 10
     left_bottom_y = shop_y
-    
-    y_position = min(left_bottom_y, meta_bottom_y) - 26
+
+    y_position = min(left_bottom_y, meta_bottom_y) - 22
     
     # Détails commande
     c.setFont("Helvetica-Bold", 12)
@@ -189,12 +167,12 @@ def generate_invoice_pdf(order, target_currency=None):
     
     # En-tête tableau
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(50, y_position, "Produit")
-    c.drawString(300, y_position, "Quantité")
-    c.drawString(380, y_position, "Prix")
-    c.drawString(460, y_position, "Total")
+    c.drawString(margin_x, y_position, "Produit")
+    c.drawString(margin_x + 240, y_position, "Quantité")
+    c.drawString(margin_x + 320, y_position, "Prix")
+    c.drawString(margin_x + 400, y_position, "Total")
     
-    c.line(50, y_position - 5, 550, y_position - 5)
+    c.line(margin_x, y_position - 5, width - margin_x, y_position - 5)
     
     # Articles
     y_position -= 18
@@ -202,21 +180,21 @@ def generate_invoice_pdf(order, target_currency=None):
     for item in order.items:
         name = item.product.name if item.product else "Produit"
         for line in textwrap.wrap(name, width=35):
-            c.drawString(50, y_position, line)
+            c.drawString(margin_x, y_position, line)
             y_position -= 10
         y_position += 10  # correct last decrement
-        c.drawString(300, y_position, str(item.quantity))
+        c.drawString(margin_x + 240, y_position, str(item.quantity))
         price_converted = convert_amount(item.price)
         line_total_converted = convert_amount(item.quantity * item.price)
-        c.drawString(380, y_position, f"{format_amount(price_converted)} {currency}")
-        c.drawString(460, y_position, f"{format_amount(line_total_converted)} {currency}")
+        c.drawString(margin_x + 320, y_position, f"{format_amount(price_converted)} {currency}")
+        c.drawString(margin_x + 400, y_position, f"{format_amount(line_total_converted)} {currency}")
         y_position -= 16
     
     # Total
     y_position -= 10
     c.setFont("Helvetica-Bold", 12)
     total_converted = convert_amount(order.total_amount)
-    c.drawString(400, y_position, f"TOTAL: {format_amount(total_converted)} {currency}")
+    c.drawString(margin_x + 300, y_position, f"TOTAL: {format_amount(total_converted)} {currency}")
     
     # QR Code en bas à droite du pied de page
     qr_data = f"""
@@ -227,7 +205,7 @@ Total: {format_amount(total_converted)} {currency}
 Date: {order.created_at.strftime('%d/%m/%Y')}
     """
     
-    qr = qrcode.QRCode(version=1, box_size=4, border=2)
+    qr = qrcode.QRCode(version=1, box_size=3, border=1)
     qr.add_data(qr_data)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -236,7 +214,7 @@ Date: {order.created_at.strftime('%d/%m/%Y')}
     qr_img.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
     
-    qr_size = 90
+    qr_size = 70
     qr_x = width - qr_size - 40
     qr_y = 20
     c.drawImage(ImageReader(qr_buffer), qr_x, qr_y, width=qr_size, height=qr_size)
