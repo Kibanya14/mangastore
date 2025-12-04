@@ -12,9 +12,10 @@ import requests
 from flask import current_app
 from backend.models import ShopSettings
 
+
 def generate_products_pdf(products, target_currency=None):
     buffer = BytesIO()
-    # Marges plus serrées pour réduire la pagination et la mémoire
+    # Marges réduites pour rapprocher le tableau du haut et limiter le vide
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=40, bottomMargin=40, leftMargin=36, rightMargin=36)
     styles = getSampleStyleSheet()
     settings = ShopSettings.query.first()
@@ -22,7 +23,32 @@ def generate_products_pdf(products, target_currency=None):
     available_currencies = [c.upper() for c in current_app.config.get('AVAILABLE_CURRENCIES', ['USD', 'CDF'])]
     uploads_root = current_app.config.get('UPLOAD_FOLDER', os.path.join('frontend', 'static', 'uploads'))
     shop_name = settings.shop_name if settings and settings.shop_name else "Manga Store"
-    logo_reader = None  # logo retiré pour alléger le PDF
+    logo_reader = None
+
+    def _image_reader(path: str | None):
+        if not path:
+            return None
+        if str(path).startswith(('http://', 'https://')):
+            try:
+                resp = requests.get(path, timeout=5)
+                resp.raise_for_status()
+                return ImageReader(BytesIO(resp.content))
+            except Exception:
+                return None
+        if os.path.exists(path):
+            try:
+                return ImageReader(path)
+            except Exception:
+                return None
+        return None
+
+    if settings and settings.shop_logo:
+        # Logo peut venir d'une URL (Supabase/public) ou du disque local uploads/logos
+        if str(settings.shop_logo).startswith(('http://', 'https://')):
+            logo_reader = _image_reader(settings.shop_logo)
+        else:
+            candidate = os.path.join(uploads_root, 'logos', settings.shop_logo)
+            logo_reader = _image_reader(candidate)
 
     def get_rate(from_currency: str, to_currency: str) -> float:
         if not from_currency or not to_currency or from_currency == to_currency:
@@ -72,12 +98,33 @@ def generate_products_pdf(products, target_currency=None):
     def _header_footer(canvas, doc):
         width, height = A4
         canvas.saveState()
+        logo_size = 60
+        if logo_reader:
+            try:
+                x = (width - logo_size) / 2
+                y = height - logo_size - 16
+                # cercle fond resserré
+                canvas.setFillColor(colors.white)
+                canvas.setStrokeColor(colors.HexColor("#4c1d95"))
+                canvas.setLineWidth(2)
+                canvas.circle(x + logo_size/2, y + logo_size/2, logo_size/2 + 2, stroke=1, fill=1)
+                # image masquée
+                canvas.saveState()
+                path = canvas.beginPath()
+                path.circle(x + logo_size/2, y + logo_size/2, logo_size/2)
+                canvas.clipPath(path, stroke=0)
+                canvas.drawImage(logo_reader, x, y, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
+                canvas.restoreState()
+            except Exception:
+                pass
+        # Pied de page aligné sur invoice_generator
         canvas.setFont("Helvetica-Oblique", 8)
         canvas.setFillColor(colors.HexColor("#0f172a"))
-        canvas.drawString(36, 30, f"© Manga Store — Généré le {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        canvas.drawString(50, 40, "© Manga Store - Propulsé par Esperdigi")
+        canvas.drawString(50, 28, f"Liste générée le {datetime.now().strftime('%d/%m/%Y à %H:%M')}")
         if qr_image:
-            qr_size = 60
-            canvas.drawImage(qr_image, width - qr_size - 30, 16, width=qr_size, height=qr_size, mask='auto')
+            qr_size = 70
+            canvas.drawImage(qr_image, width - qr_size - 36, 18, width=qr_size, height=qr_size, mask='auto')
         canvas.restoreState()
 
     # Contenu du PDF
@@ -92,10 +139,19 @@ def generate_products_pdf(products, target_currency=None):
         alignment=1,
         textColor=colors.HexColor("#4c1d95")
     )
-    content.append(Paragraph("LISTE DES PRODUITS EN STOCK", title_style))
+    content.append(Paragraph("LISTE DES PRODUITS EN STOCKS", title_style))
 
-    # Tableau des produits avec miniatures réduites
-    data = [['Img', 'Nom', 'Catégorie', 'Prix', 'Stock', 'Statut']]
+    # Styles texte pour forcer les retours à la ligne dans les cellules
+    text_style = ParagraphStyle(
+        'ProdText',
+        parent=styles['BodyText'],
+        fontSize=10,
+        leading=12,
+        wordWrap='CJK'
+    )
+
+    # Tableau des produits
+    data = [['Image', 'Nom', 'Catégorie', 'Prix', 'Stock', 'Statut']]
     status_colors = []
 
     def product_image(prod):
@@ -103,14 +159,12 @@ def generate_products_pdf(products, target_currency=None):
             first_image = None
             if prod.images:
                 first_image = prod.images.split('|')[0]
-            if not first_image:
-                return Paragraph("—", styles['BodyText'])
-            if first_image.startswith('http'):
-                # Ignorer les URLs pour éviter le téléchargement et la mémoire
-                return Paragraph("—", styles['BodyText'])
-            path = os.path.join(uploads_root, 'products', first_image)
-            if os.path.exists(path):
-                return Image(path, width=0.6*inch, height=0.6*inch)
+            if first_image:
+                path = first_image if first_image.startswith('http') else os.path.join(uploads_root, 'products', first_image)
+                if first_image.startswith('http') or os.path.exists(path):
+                    img_path = path
+                    # ReportLab Image accepte les URL, mais on privilégie les fichiers locaux si existants
+                    return Image(img_path, width=0.8*inch, height=0.8*inch)
         except Exception:
             return Paragraph("—", styles['BodyText'])
         return Paragraph("—", styles['BodyText'])
@@ -120,15 +174,15 @@ def generate_products_pdf(products, target_currency=None):
         price_converted = format_amount(convert_amount(product.price))
         data.append([
             product_image(product),
-            product.name[:45],
-            product.category.name[:25] if product.category else "Non catégorisé",
+            Paragraph(product.name or "Produit", text_style),
+            Paragraph(product.category.name if product.category else "Non catégorisé", text_style),
             f"{price_converted} {currency}",
             str(product.quantity),
             status
         ])
         status_colors.append(status)
 
-    table = Table(data, colWidths=[0.8*inch, 2.2*inch, 1.6*inch, 1.0*inch, 0.8*inch, 1.0*inch])
+    table = Table(data, colWidths=[0.9*inch, 2.2*inch, 1.6*inch, 1.1*inch, 0.9*inch, 1.0*inch])
     table_style = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#4c1d95")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
