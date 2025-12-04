@@ -97,7 +97,7 @@
                     <div class="h-48 bg-gray-200 relative overflow-hidden flex items-center justify-center">
                         {% set img = get_first_image_url(product) %}
                         {% if img %}
-                        <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                        <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-contain p-2">
                         {% else %}
                         <i class="fas fa-book text-gray-400 text-6xl"></i>
                         {% endif %}

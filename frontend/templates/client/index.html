@@ -59,10 +59,10 @@
             {% for product in products %}
             <div class="bg-white rounded-xl shadow-md overflow-hidden hover-scale border border-gray-200">
                 <!-- Image du produit -->
-                <div class="h-48 bg-gray-200 relative overflow-hidden">
+                <div class="h-48 bg-gray-200 relative overflow-hidden flex items-center justify-center">
                     {% set img = get_first_image_url(product) %}
                     {% if img %}
-                    <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                    <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-contain p-2">
                     {% else %}
                     <div class="w-full h-full flex items-center justify-center bg-purple-100">
                         <i class="fas fa-book text-purple-400 text-4xl"></i>

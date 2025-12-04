@@ -125,7 +125,7 @@
                         <div class="flex items-center space-x-3">
                             {% set img = get_first_image_url(item.product) %}
                             {% if img %}
-                            <img src="{{ img }}" alt="{{ item.product.name }}" class="h-12 w-12 object-cover rounded">
+                                <img src="{{ img }}" alt="{{ item.product.name }}" class="h-12 w-12 object-contain rounded bg-gray-50 border">
                             {% else %}
                             <div class="h-12 w-12 bg-purple-100 rounded flex items-center justify-center">
                                 <i class="fas fa-book text-purple-600"></i>

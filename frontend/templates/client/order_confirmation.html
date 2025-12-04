@@ -69,10 +69,10 @@
                             {% set first_image = item.product.images.split('|')[0] if item.product and item.product.images else None %}
                             {% if first_image %}
                                 {% if first_image.startswith('http') %}
-                                <img src="{{ first_image }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
-                                {% else %}
-                                <img src="{{ first_image if first_image.startswith('http') else media_url('uploads/products/' + first_image) }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-cover rounded-lg">
-                                {% endif %}
+                                <img src="{{ first_image }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-contain rounded-lg bg-gray-50 border">
+                            {% else %}
+                                <img src="{{ first_image if first_image.startswith('http') else media_url('uploads/products/' + first_image) }}" alt="{{ item.product.name if item.product else 'Produit' }}" class="h-16 w-16 object-contain rounded-lg bg-gray-50 border">
+                            {% endif %}
                             {% else %}
                                 <div class="h-16 w-16 bg-purple-100 rounded-lg flex items-center justify-center">
                                     <i class="fas fa-book text-purple-600"></i>
