@@ -27,6 +27,7 @@ import requests
 from threading import Timer
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from urllib.parse import urljoin
+from collections import defaultdict
 
 # Patch standard eventlet après avoir configuré ENV
 eventlet.monkey_patch()
@@ -114,6 +115,93 @@ def create_app():
         return redirect(url_for('client_login'))
     
     mail = Mail(app)
+
+    def _week_bounds(ref_dt=None):
+        """Retourne le début et la fin (UTC) de la semaine courante (lundi -> lundi)."""
+        ref_dt = ref_dt or datetime.utcnow()
+        start = datetime(ref_dt.year, ref_dt.month, ref_dt.day) - timedelta(days=ref_dt.weekday())
+        end = start + timedelta(days=7)
+        return start, end
+
+    def _commission_for_amount(total_amount: float) -> float:
+        """Calcule la commission de base selon le montant de commande."""
+        try:
+            total = float(total_amount or 0)
+        except Exception:
+            total = 0.0
+        if total <= 25:
+            return 3.0
+        if total < 80:
+            return 4.0
+        return 4.0 + (0.02 * total)
+
+    def _apply_commission(assignment: DeliveryAssignment):
+        """Crédite la commission de base (+ bonus dimanche) pour une livraison terminée."""
+        if assignment.commission_recorded or not assignment.deliverer or not assignment.order:
+            return 0.0
+
+        now = datetime.utcnow()
+        commission = _commission_for_amount(assignment.order.total_amount)
+        completed_dt = assignment.completed_at or now
+        # Bonus 5% si livraison finalisée un dimanche
+        try:
+            if completed_dt.weekday() == 6:  # 0=lundi ... 6=dimanche
+                commission += 0.05 * float(assignment.order.total_amount or 0)
+        except Exception:
+            pass
+        assignment.commission_recorded = True
+        assignment.completed_at = assignment.completed_at or now
+        assignment.payout_status = assignment.payout_status or 'pending'
+        assignment.deliverer.commission_due = (assignment.deliverer.commission_due or 0) + commission
+        return commission
+
+    def _assignment_commission(a: DeliveryAssignment):
+        """Renvoie la commission (base + dimanche) pour une affectation livrée."""
+        if not a.order:
+            return 0.0
+        base = _commission_for_amount(a.order.total_amount)
+        sunday_bonus = 0.0
+        try:
+            ref = a.completed_at or a.order.delivered_at or datetime.utcnow()
+            if ref.weekday() == 6:
+                sunday_bonus = 0.05 * float(a.order.total_amount or 0)
+        except Exception:
+            sunday_bonus = 0.0
+        return base + sunday_bonus
+
+    def _weekly_bonus_total(assignments):
+        """Calcule le total des bonus hebdomadaires (5$ par bloc de 8 livraisons) pour une liste d'affectations livrées."""
+        weekly_counts = defaultdict(int)
+        for a in assignments:
+            if not a.completed_at:
+                continue
+            week_start, _ = _week_bounds(a.completed_at)
+            weekly_counts[week_start] += 1
+        total = 0.0
+        for count in weekly_counts.values():
+            total += (count // 8) * 5.0
+        return total
+
+    def _weekly_bonus_state(deliverer: Deliverer):
+        """Calcule le nombre de livraisons de la semaine et les bonus disponibles/non payés."""
+        week_start, week_end = _week_bounds()
+        delivered_this_week = (DeliveryAssignment.query
+                               .filter(DeliveryAssignment.deliverer_id == deliverer.id)
+                               .filter(DeliveryAssignment.status == 'delivered')
+                               .filter(DeliveryAssignment.completed_at >= week_start)
+                               .filter(DeliveryAssignment.completed_at < week_end)
+                               .count())
+        bonuses_earned = delivered_this_week // 8
+        paid_count = deliverer.weekly_bonus_paid_count if deliverer.last_bonus_week_start == week_start.date() else 0
+        outstanding = max(0, bonuses_earned - paid_count)
+        return {
+            'week_start': week_start.date(),
+            'deliveries': delivered_this_week,
+            'bonuses_earned': bonuses_earned,
+            'paid_count': paid_count,
+            'outstanding': outstanding,
+            'current_block_count': delivered_this_week % 8,
+        }
 
     # Logging: fichier rotatif
     logs_dir = os.path.join(project_root, 'logs')
@@ -1836,11 +1924,7 @@ def create_app():
                 assignments = DeliveryAssignment.query.filter_by(order_id=order.id).all()
                 for assign in assignments:
                     if assign.status == 'delivered' and not assign.commission_recorded:
-                        assign.commission_recorded = True
-                        assign.completed_at = datetime.utcnow()
-                        assign.payout_status = 'pending'
-                        if assign.deliverer:
-                            assign.deliverer.commission_due = (assign.deliverer.commission_due or 0) + 3.5
+                        _apply_commission(assign)
                 db.session.commit()
                 schedule_stock_deduction(order)
                 _deduct_stock_if_due(order.id)
@@ -2137,7 +2221,25 @@ def create_app():
     @require_permission('manage_deliverers')
     def admin_deliverers():
         deliverers = Deliverer.query.order_by(Deliverer.created_at.desc()).all()
-        return render_template('admin/deliverers.html', deliverers=deliverers)
+        week_start, week_end = _week_bounds()
+
+        weekly_progress = {}
+        for d in deliverers:
+            state = _weekly_bonus_state(d)
+            count = state['deliveries']
+            percent = min(100, int((state['current_block_count'] / 8) * 100)) if count else 0
+            eligible = state['outstanding'] > 0
+            weekly_progress[d.id] = {
+                'count': count,
+                'percent': percent,
+                'eligible': eligible,
+                'outstanding': state['outstanding'],
+            }
+
+        return render_template('admin/deliverers.html',
+                               deliverers=deliverers,
+                               weekly_progress=weekly_progress,
+                               week_start=week_start.date())
 
     @app.route('/admin/deliverers/add', methods=['POST'])
     @login_required
@@ -2246,11 +2348,25 @@ def create_app():
         delivered = [a for a in assignments if a.status == 'delivered']
         pending_payout = [a for a in delivered if a.payout_status != 'paid']
         paid_assignments = [a for a in assignments if a.payout_status == 'paid']
+        # Totaux commissions (base + bonus dimanche) hors bonus hebdo
+        base_commission_total = sum(_assignment_commission(a) for a in delivered)
+        weekly_bonus_total = _weekly_bonus_total(delivered)
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        delivered_month = [a for a in delivered if a.completed_at and a.completed_at >= month_start]
+        monthly_base = sum(_assignment_commission(a) for a in delivered_month)
+        monthly_weekly_bonus = _weekly_bonus_total(delivered_month)
+        bonus_state = _weekly_bonus_state(deliverer)
         return render_template('admin/deliverer_view.html',
                                deliverer=deliverer,
                                assignments=assignments,
                                pending_payout=pending_payout,
-                               paid_assignments=paid_assignments)
+                               paid_assignments=paid_assignments,
+                               base_commission_total=base_commission_total,
+                               weekly_bonus_total=weekly_bonus_total,
+                               monthly_base=monthly_base,
+                               monthly_weekly_bonus=monthly_weekly_bonus,
+                               monthly_deliveries=len(delivered_month),
+                               bonus_state=bonus_state)
 
     @app.route('/admin/deliverers/<int:deliverer_id>/payout', methods=['POST'])
     @login_required
@@ -2276,6 +2392,33 @@ def create_app():
             app.logger.error(f"Erreur payout livreur {deliverer.email}: {e}")
             flash('Erreur lors de la mise à jour des commissions', 'error')
         return redirect(url_for('admin_view_deliverer', deliverer_id=deliverer.id))
+
+    @app.route('/admin/deliverers/<int:deliverer_id>/pay_weekly_bonus', methods=['POST'])
+    @login_required
+    @require_permission('manage_deliverers')
+    def admin_pay_weekly_bonus(deliverer_id):
+        deliverer = Deliverer.query.get_or_404(deliverer_id)
+        state = _weekly_bonus_state(deliverer)
+        if state['outstanding'] <= 0:
+            flash('Aucun bonus en attente pour cette semaine.', 'info')
+            return redirect(url_for('admin_deliverers'))
+
+        try:
+            payout = state['outstanding'] * 5.0
+            deliverer.commission_due = (deliverer.commission_due or 0) + payout
+            deliverer.last_bonus_week_start = state['week_start']
+            deliverer.weekly_bonus_paid_count = state['bonuses_earned']
+            db.session.commit()
+            flash(f'Bonus hebdomadaire payé (+{payout:.2f}$).', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erreur paiement bonus hebdo livreur {deliverer.email}: {e}")
+            flash('Erreur lors du paiement du bonus hebdomadaire.', 'error')
+
+        return redirect(url_for('admin_deliverers'))
+
+    # Helpers accessibles dans les templates
+    app.jinja_env.globals['_assignment_commission'] = _assignment_commission
 
     @app.route('/admin/admins/delete/<int:user_id>', methods=['POST'])
     @login_required
@@ -2487,10 +2630,7 @@ def create_app():
             assignment.status = status
             assignment.note = note.strip()
             if status == 'delivered' and assignment.order.status == 'delivered' and not assignment.commission_recorded:
-                assignment.commission_recorded = True
-                assignment.completed_at = datetime.utcnow()
-                assignment.payout_status = 'pending'
-                current_user.commission_due = (current_user.commission_due or 0) + 3.5
+                _apply_commission(assignment)
             db.session.commit()
             flash('Statut mis à jour', 'success')
         else:
@@ -2536,21 +2676,48 @@ def create_app():
 
         now = datetime.utcnow()
         month_start = datetime(now.year, now.month, 1)
-        deliveries_this_month = DeliveryAssignment.query.filter_by(deliverer_id=current_user.id, status='delivered').filter(DeliveryAssignment.created_at >= month_start).count()
-        commission_this_month = deliveries_this_month * 3.5
+        delivered_qs = (DeliveryAssignment.query
+                        .options(joinedload(DeliveryAssignment.order))
+                        .filter_by(deliverer_id=current_user.id, status='delivered')
+                        .filter(DeliveryAssignment.completed_at >= month_start)
+                        .all())
+
+        # Commission du mois (base + dimanche + bonus hebdo par tranche de 8)
+        commission_this_month = 0.0
+        weekly_counts = defaultdict(int)
+        for a in delivered_qs:
+            commission_this_month += _assignment_commission(a)
+            if a.completed_at:
+                week_start, _ = _week_bounds(a.completed_at)
+                weekly_counts[week_start] += 1
+        for week_start, count in weekly_counts.items():
+            commission_this_month += (count // 8) * 5.0
+
         monthly_stats = {
-            'deliveries_this_month': deliveries_this_month,
+            'deliveries_this_month': len(delivered_qs),
             'commission_this_month': commission_this_month
         }
 
-        # Historique commissions payées par mois
-        paid_assignments = DeliveryAssignment.query.filter_by(deliverer_id=current_user.id, payout_status='paid').order_by(DeliveryAssignment.completed_at.desc()).all()
-        commission_history = {}
+        # Historique commissions payées par mois (base + bonus hebdo)
+        paid_assignments = (DeliveryAssignment.query
+                            .options(joinedload(DeliveryAssignment.order))
+                            .filter_by(deliverer_id=current_user.id, payout_status='paid')
+                            .order_by(DeliveryAssignment.completed_at.desc())
+                            .all())
+        commission_history = defaultdict(float)
+        weekly_paid_counts = defaultdict(int)
+        month_counts = defaultdict(int)
         for a in paid_assignments:
-            key = a.completed_at.strftime('%Y-%m') if a.completed_at else 'N/A'
-            commission_history.setdefault(key, 0)
-            commission_history[key] += 3.5
-        history_list = [{'month': k, 'amount': v, 'count': int(v / 3.5)} for k, v in commission_history.items()]
+            key_month = a.completed_at.strftime('%Y-%m') if a.completed_at else 'N/A'
+            commission_history[key_month] += _assignment_commission(a)
+            month_counts[key_month] += 1
+            if a.completed_at:
+                week_start, _ = _week_bounds(a.completed_at)
+                weekly_paid_counts[(week_start, key_month)] += 1
+        for (week_start, key_month), count in weekly_paid_counts.items():
+            commission_history[key_month] += (count // 8) * 5.0
+
+        history_list = [{'month': k, 'amount': v, 'count': month_counts.get(k, 0)} for k, v in commission_history.items()]
         history_list.sort(key=lambda x: x['month'], reverse=True)
 
         return render_template('deliverer/profile.html', monthly_stats=monthly_stats, commission_history=history_list)

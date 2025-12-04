@@ -58,6 +58,8 @@ class Deliverer(UserMixin, db.Model):
     commission_due = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(20), default='available')  # available, busy, offline
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_bonus_week_start = db.Column(db.Date)  # Date du lundi de la dernière prime hebdo payée
+    weekly_bonus_paid_count = db.Column(db.Integer, default=0)  # Nombre de bonus 5$ déjà payés cette semaine
 
     assignments = db.relationship('DeliveryAssignment', backref='deliverer', lazy=True, cascade='all, delete-orphan')
 

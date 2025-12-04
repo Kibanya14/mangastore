@@ -3,11 +3,40 @@
 {% block title %}À propos - Manga Livreur{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow p-6 border border-gray-200 space-y-3">
+<div class="bg-white rounded-lg shadow p-6 border border-gray-200 space-y-4">
     <h2 class="text-xl font-semibold text-gray-800">À propos</h2>
     <p class="text-sm text-gray-700">
         Espace dédié aux livreurs de Manga Store pour suivre les livraisons, mettre à jour les statuts et consulter les commissions dans un cadre légal et transparent.
     </p>
+
+    <div class="p-4 bg-indigo-50 rounded border border-indigo-100">
+        <h3 class="font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+            <i class="fas fa-hand-holding-usd"></i> Rémunération du livreur
+        </h3>
+        <ol class="list-decimal list-inside text-sm text-gray-800 space-y-3">
+            <li>
+                <span class="font-semibold">Commission par livraison</span><br>
+                <span class="text-gray-700">Commande ≤ 25$ : commission fixe 3$</span><br>
+                <span class="text-gray-700">Commande &gt; 25$ : commission fixe 4$</span>
+            </li>
+            <li>
+                <span class="font-semibold">Bonus selon le montant de la commande</span><br>
+                <span class="text-gray-700">Dès 80$ : 4$ + 2% du montant total de la commande livrée</span>
+            </li>
+            <li>
+                <span class="font-semibold">Bonus nouvelle clientèle apportée</span><br>
+                <span class="text-gray-700">Si le client est apporté par le livreur : bonus du montant de la livraison + 5% du montant de la commande (à signaler à l’admin sur la commande)</span>
+            </li>
+            <li>
+                <span class="font-semibold">Bonus hebdomadaire</span><br>
+                <span class="text-gray-700">Au moins 8 livraisons dans la semaine : +5$</span>
+            </li>
+        </ol>
+        <p class="text-xs text-gray-600 mt-2">
+            Certains bonus sont versés automatiquement, d’autres nécessitent validation par l’admin (ex : nouveau client signalé).
+        </p>
+    </div>
+
     <div class="p-4 bg-gray-50 rounded">
         <h3 class="font-semibold text-gray-800 mb-1">Support & Conception</h3>
         <p class="text-sm text-gray-700">

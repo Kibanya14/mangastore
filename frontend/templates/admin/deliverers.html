@@ -31,6 +31,7 @@
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-envelope mr-1"></i>Email</th>
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-phone mr-1"></i>Téléphone</th>
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-coins mr-1"></i>Commission due</th>
+                        <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-bolt mr-1"></i>Bonus hebdo</th>
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-signal mr-1"></i>Statut</th>
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-clock mr-1"></i>Créé le</th>
                         <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase"><i class="fas fa-ellipsis-h mr-1"></i>Actions</th>
@@ -38,11 +39,35 @@
                 </thead>
                 <tbody class="divide-y">
                     {% for d in deliverers %}
+                    {% set prog = weekly_progress.get(d.id, {}) %}
+                    {% set count = prog.count or 0 %}
+                    {% set percent = prog.percent or 0 %}
+                    {% set eligible = prog.eligible %}
+                    {% set outstanding = prog.outstanding or 0 %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ d.first_name }} {{ d.last_name }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700">{{ d.email }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700">{{ d.phone or '—' }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700">{{ convert_price(d.commission_due or 0, from_currency=base_currency) }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 w-64">
+                            <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                <span>Livraisons semaine</span>
+                                <span>{{ count }} ({{ count % 8 }}/8)</span>
+                            </div>
+                            <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-2 bg-emerald-500" style="width: {{ percent }}%;"></div>
+                            </div>
+                            <div class="mt-2 flex items-center gap-2">
+                                {% if eligible %}
+                                <form action="{{ url_for('admin_pay_weekly_bonus', deliverer_id=d.id) }}" method="POST" onsubmit="return confirm('Payer le(s) bonus hebdomadaire(s) en attente ?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="px-2 py-1 text-[11px] rounded bg-emerald-600 text-white hover:bg-emerald-700">Payer bonus (x{{ outstanding }})</button>
+                                </form>
+                                {% else %}
+                                <span class="text-[11px] text-gray-500">En cours…</span>
+                                {% endif %}
+                            </div>
+                        </td>
                         <td class="px-4 py-3 text-sm text-gray-700"><span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">{{ status_fr(d.status, 'deliverer') }}</span></td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ d.created_at.strftime('%d/%m/%Y') }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700">
