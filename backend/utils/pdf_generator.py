@@ -16,7 +16,7 @@ from backend.models import ShopSettings
 def generate_products_pdf(products, target_currency=None):
     buffer = BytesIO()
     # Marges réduites pour rapprocher le tableau du haut et limiter le vide
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=40, bottomMargin=40, leftMargin=36, rightMargin=36)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=36, bottomMargin=36, leftMargin=30, rightMargin=30)
     styles = getSampleStyleSheet()
     settings = ShopSettings.query.first()
     base_currency = (settings.currency if settings and settings.currency else "USD").upper()
@@ -145,8 +145,8 @@ def generate_products_pdf(products, target_currency=None):
     text_style = ParagraphStyle(
         'ProdText',
         parent=styles['BodyText'],
-        fontSize=10,
-        leading=12,
+        fontSize=9,
+        leading=11,
         wordWrap='CJK'
     )
 
@@ -164,7 +164,7 @@ def generate_products_pdf(products, target_currency=None):
                 if first_image.startswith('http') or os.path.exists(path):
                     img_path = path
                     # ReportLab Image accepte les URL, mais on privilégie les fichiers locaux si existants
-                    return Image(img_path, width=0.8*inch, height=0.8*inch)
+                    return Image(img_path, width=0.5*inch, height=0.5*inch)
         except Exception:
             return Paragraph("—", styles['BodyText'])
         return Paragraph("—", styles['BodyText'])

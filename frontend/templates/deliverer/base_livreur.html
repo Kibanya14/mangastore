@@ -8,7 +8,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { --brand: #0f766e; --brand-dark: #0d5c54; }
-        body { padding-bottom: 88px; } /* évite que le footer fixe recouvre le contenu */
+        .mobile-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .mobile-menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-menu {
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        /* Footer fixe en bas */
         .footer-fixed {
             position: fixed;
             left: 0;
@@ -16,75 +39,154 @@
             bottom: 0;
             background: #fff;
             border-top: 1px solid #e5e7eb;
-        }
-        .nav-panel {
-            transition: max-height 0.2s ease, opacity 0.2s ease;
+            z-index: 30;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-6xl mx-auto px-4 py-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                        {% if shop_settings and shop_settings.deliverer_logo %}
-                        <img src="{{ media_url('uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
-                        {% else %}
-                        <span>ML</span>
-                        {% endif %}
-                    </div>
-                    <div>
-                        <p class="text-lg font-semibold text-gray-800">Manga Livreur</p>
-                        <p class="text-xs text-gray-500">Interface livreur</p>
-                    </div>
+<body class="min-h-screen flex flex-col bg-gray-100" style="padding-bottom: 88px;">
+    <!-- Navigation Livreur -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50 border-b">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo et Titre -->
+                <div class="flex items-center">
+                    <a href="{{ url_for('deliverer_dashboard') }}" class="flex items-center space-x-2">
+                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                            {% if shop_settings and shop_settings.deliverer_logo %}
+                            <img src="{{ url_for('static', filename='uploads/logos/' + shop_settings.deliverer_logo) }}" alt="Logo livreur" class="w-full h-full object-cover">
+                            {% else %}
+                            <span>ML</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-gray-800">Manga Livreur</span>
+                            <p class="text-xs text-gray-500">Interface livreur</p>
+                        </div>
+                    </a>
                 </div>
+
+                <!-- Menu Navigation Desktop -->
                 {% if current_user.is_authenticated and current_user.is_deliverer %}
-                <button id="nav-toggle" class="md:hidden h-10 w-10 flex items-center justify-center rounded-full border border-emerald-200 text-emerald-700">
-                    <i class="fas fa-bars"></i>
-                </button>
-                {% endif %}
-            </div>
-            {% if current_user.is_authenticated and current_user.is_deliverer %}
-            <div id="livreur-nav" class="nav-panel hidden md:flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mt-3 md:mt-0">
-                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                    <a href="{{ url_for('deliverer_dashboard') }}" class="text-sm text-gray-700 hover:text-emerald-600">Tableau de bord</a>
-                    <a href="{{ url_for('deliverer_profile') }}" class="text-sm text-gray-700 hover:text-emerald-600">Profil</a>
-                    <a href="{{ url_for('forum') }}" class="text-sm text-gray-700 hover:text-emerald-600 flex items-center gap-1">
-                        <i class="fas fa-comments text-emerald-600"></i> Forum
+                <div class="hidden md:flex items-center space-x-6">
+                    <!-- Navigation Links -->
+                    <a href="{{ url_for('deliverer_dashboard') }}" class="text-gray-600 hover:text-emerald-600 transition flex items-center gap-2">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="font-medium">Tableau de bord</span>
                     </a>
-                    <a href="{{ url_for('deliverer_about') }}" class="text-sm text-gray-700 hover:text-emerald-600 flex items-center gap-1">
-                        <i class="fas fa-hand-holding-usd text-emerald-600"></i> Rémunération
+                    
+                    <a href="{{ url_for('deliverer_about') }}" class="text-gray-600 hover:text-emerald-600 transition flex items-center gap-2">
+                        <i class="fas fa-circle-info"></i>
+                        <span class="font-medium">À propos</span>
                     </a>
-                </div>
-                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                    <form action="{{ url_for('set_currency') }}" method="POST" class="flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+
+                    <!-- Devise selector -->
+                    <form action="{{ url_for('set_currency') }}" method="POST" class="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <i class="fas fa-coins text-yellow-500 text-sm"></i>
-                        <select name="currency" onchange="this.form.submit()" class="bg-transparent text-sm focus:outline-none">
+                        <select name="currency" onchange="this.form.submit()" class="bg-transparent focus:outline-none text-sm cursor-pointer">
                             {% for cur in available_currencies %}
-                            <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                                <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
                             {% endfor %}
                         </select>
                     </form>
-                    <div class="relative group">
-                        <button class="h-10 w-10 rounded-full border border-emerald-200 overflow-hidden flex items-center justify-center bg-emerald-50">
+
+                    <!-- Profil Livreur -->
+                    <div class="relative group" id="profileDropdown">
+                        <button class="flex items-center space-x-2 text-gray-600 hover:text-emerald-600 transition">
                             {% if current_user.profile_picture and current_user.profile_picture != 'default_profile.png' %}
-                            <img src="{{ media_url('uploads/profiles/' + current_user.profile_picture) }}" alt="Profil" class="h-full w-full object-cover">
+                            <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_picture) }}" 
+                                 alt="Profile" class="h-8 w-8 rounded-full border-2 border-emerald-500 object-cover">
                             {% else %}
-                            <i class="fas fa-user text-emerald-700"></i>
+                            <div class="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 border border-emerald-200">
+                                <i class="fas fa-user"></i>
+                            </div>
                             {% endif %}
+                            <span class="font-medium">{{ current_user.first_name or current_user.username }}</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                            <a href="{{ url_for('deliverer_profile') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700">Profil</a>
-                            <a href="{{ url_for('deliverer_logout') }}" class="block px-4 py-3 text-sm text-red-600 hover:bg-red-50">Déconnexion</a>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50">
+                            <div class="p-3 border-b border-gray-100">
+                                <p class="font-medium text-gray-800">{{ current_user.full_name or current_user.username }}</p>
+                                <p class="text-xs text-gray-500">Livreur</p>
+                            </div>
+                            <a href="{{ url_for('deliverer_profile') }}" 
+                               class="flex items-center gap-2 px-4 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition">
+                                <i class="fas fa-user-cog text-sm"></i>
+                                <span>Mon Profil</span>
+                            </a>
+                            <a href="{{ url_for('deliverer_logout') }}" 
+                               class="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 transition border-t border-gray-100">
+                                <i class="fas fa-sign-out-alt text-sm"></i>
+                                <span>Déconnexion</span>
+                            </a>
                         </div>
                     </div>
                 </div>
+                {% endif %}
+
+                <!-- Bouton Menu Mobile -->
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-gray-600 hover:text-emerald-600">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
             </div>
-            {% endif %}
         </div>
-    </header>
+
+        <!-- Menu Mobile -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white border-t">
+            <div class="px-4 py-3 space-y-3">
+                <a href="{{ url_for('deliverer_dashboard') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
+                    <i class="fas fa-tachometer-alt text-emerald-600"></i>
+                    <span>Tableau de bord</span>
+                </a>
+                
+                <a href="{{ url_for('deliverer_profile') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
+                    <i class="fas fa-user text-emerald-600"></i>
+                    <span>Profil</span>
+                </a>
+                
+                <a href="{{ url_for('deliverer_about') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
+                    <i class="fas fa-circle-info text-emerald-600"></i>
+                    <span>À propos</span>
+                </a>
+
+                <!-- Devise mobile -->
+                <div class="py-3 border-t border-gray-200">
+                    <p class="text-xs font-medium text-gray-500 mb-2">Devise</p>
+                    <form action="{{ url_for('set_currency') }}" method="POST" class="bg-gray-50 rounded-lg p-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fas fa-coins text-yellow-500"></i>
+                            <select name="currency" class="flex-1 bg-transparent text-sm focus:outline-none cursor-pointer">
+                                {% for cur in available_currencies %}
+                                <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-sync-alt"></i>
+                            Mettre à jour
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Déconnexion mobile -->
+                <div class="py-3 border-t border-gray-200">
+                    <a href="{{ url_for('deliverer_logout') }}" 
+                       class="flex items-center justify-center gap-2 w-full bg-red-50 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-100 transition">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Déconnexion</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Overlay mobile menu -->
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -98,28 +200,49 @@
     {% endif %}
     {% endwith %}
 
-    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer-fixed w-full">
+    <footer class="footer-fixed">
         <div class="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-gray-500">
             <p>© 2025 Manga Store Livreur. Propulsé par Esperdigi. Tous droits réservés.</p>
         </div>
     </footer>
     <script>
-        // Toggle menu mobile
-        const navToggle = document.getElementById('nav-toggle');
-        const navPanel = document.getElementById('livreur-nav');
-        if (navToggle && navPanel) {
-            navToggle.addEventListener('click', () => {
-                const isHidden = navPanel.classList.contains('hidden');
-                navPanel.classList.toggle('hidden');
-                navPanel.classList.toggle('max-h-0', !isHidden);
-                navPanel.classList.toggle('opacity-0', !isHidden);
-                navToggle.innerHTML = isHidden ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-            });
+        // Menu Mobile
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+        const mobileMenu = document.getElementById('mobileMenu');
+
+        function toggleMobileMenu() {
+            const isOpen = !mobileMenu.classList.contains('hidden');
+            
+            if (isOpen) {
+                mobileMenu.classList.add('hidden');
+                mobileMenuOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                mobileMenu.classList.remove('hidden');
+                mobileMenuOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        }
+        if (mobileMenuOverlay) {
+            mobileMenuOverlay.addEventListener('click', toggleMobileMenu);
+        }
+
+        // Fermer menu mobile avec Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+                toggleMobileMenu();
+            }
+        });
+
         // Géolocalisation pour les formulaires (boutons data-geo-btn)
         function initGeoWidgets() {
             document.querySelectorAll('[data-geo-btn]').forEach(btn => {

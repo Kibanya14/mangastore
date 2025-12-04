@@ -48,23 +48,27 @@ def generate_invoice_pdf(order, target_currency=None):
         except Exception:
             return str(amount)
     
-    # Mise en page allégée : pas de grands aplats, logo réduit à côté des infos boutique
-    margin_x = 40
-    margin_top = height - 60
+    # Entête en deux colonnes, fond doux
+    header_height = 220
+    c.setFillColor(colors.HexColor("#f8fafc"))
+    c.rect(0, height - header_height, width, header_height, stroke=0, fill=1)
+    c.setFillColor(colors.HexColor("#e0f2fe"))
+    c.circle(width - 120, height - 80, 110, stroke=0, fill=1)
+    c.setFillColor(colors.HexColor("#cffafe"))
+    c.circle(width - 220, height - 150, 80, stroke=0, fill=1)
     c.setFillColor(primary_color)
-    
+
     shop_name = settings.shop_name if settings and settings.shop_name else "Manga Store"
     shop_address = settings.shop_address if settings and settings.shop_address else ""
     shop_email = settings.shop_email if settings and settings.shop_email else ""
     shop_phone = settings.shop_phone if settings and settings.shop_phone else ""
-    
-    right_col_x = width / 2 + 40
-    
-    # Logo réduit à gauche des infos boutique
-    logo_size = 60
-    logo_radius = logo_size / 2
-    logo_x = margin_x
-    logo_y = margin_top
+
+    margin_x = 40
+    left_col_w = (width / 2) - 70
+    right_col_x = width / 2 + 10
+
+    # Logo réduit en forme ronde au-dessus des infos boutique
+    logo_size = 50
     def _logo_reader():
         uploads = None
         try:
@@ -74,7 +78,6 @@ def generate_invoice_pdf(order, target_currency=None):
         if not settings or not settings.shop_logo:
             return None
         logo_value = settings.shop_logo
-        # Remote URL
         if str(logo_value).startswith(('http://', 'https://')):
             try:
                 resp = requests.get(logo_value, timeout=5)
@@ -82,7 +85,6 @@ def generate_invoice_pdf(order, target_currency=None):
                 return ImageReader(BytesIO(resp.content))
             except Exception:
                 return None
-        # Local file
         candidate = os.path.join(uploads, 'logos', logo_value)
         if os.path.exists(candidate):
             try:
@@ -92,110 +94,127 @@ def generate_invoice_pdf(order, target_currency=None):
         return None
 
     logo_reader = _logo_reader()
-    shop_block_top = margin_top
+    info_y = height - 80
 
-    # Bloc gauche: logo + infos boutique alignés
-    current_y = shop_block_top
+    # Colonne gauche : logo rond puis infos boutique
+    text_x = margin_x
     if logo_reader:
         try:
-            c.drawImage(logo_reader, logo_x, current_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
+            # Cercle de fond
+            c.setFillColor(colors.white)
+            c.setStrokeColor(accent_color)
+            c.setLineWidth(2)
+            c.circle(margin_x + logo_size/2, info_y - logo_size/2, logo_size/2 + 2, stroke=1, fill=1)
+            # Image masquée dans le cercle
+            c.saveState()
+            path = c.beginPath()
+            path.circle(margin_x + logo_size/2, info_y - logo_size/2, logo_size/2)
+            c.clipPath(path, stroke=0)
+            c.drawImage(logo_reader, margin_x, info_y - logo_size, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
+            c.restoreState()
+            text_x = margin_x + logo_size + 12
         except Exception:
-            pass
-    text_x = logo_x + logo_size + 10
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(text_x, current_y - 4, shop_name)
+            text_x = margin_x
+
+    # Ligne supérieure: nom boutique (gauche) et FACTURE PROFORMA (droite)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(text_x, info_y + 6, shop_name)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(right_col_x, info_y + 6, "FACTURE PROFORMA")
+
+    # Informations boutique (sous le nom)
     c.setFont("Helvetica", 10)
-    current_y -= 18
-    for line in textwrap.wrap(shop_address, width=60):
-        c.drawString(text_x, current_y, line)
-        current_y -= 10
+    shop_y = info_y - 10
+    wrap_width = max(28, int(left_col_w / 5.2))
+    for line in textwrap.wrap(shop_address, width=wrap_width):
+        c.drawString(text_x, shop_y, line)
+        shop_y -= 10
     if shop_email:
-        c.drawString(text_x, current_y, f"Email: {shop_email}")
-        current_y -= 12
+        c.drawString(text_x, shop_y, f"Email: {shop_email}")
+        shop_y -= 10
     if shop_phone:
-        c.drawString(text_x, current_y, f"Tél: {shop_phone}")
-        current_y -= 12
-    shop_y = current_y - 6
-    
+        c.drawString(text_x, shop_y, f"Tél: {shop_phone}")
+        shop_y -= 10
+    shop_y -= 2
+
     # Calcul de l'échéance
     try:
         due_date = (order.created_at + timedelta(days=7)).strftime('%d/%m/%Y')
     except Exception:
         due_date = ""
-    
-    # Bloc facture (à droite)
-    meta_y = shop_block_top
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_col_x, meta_y, "FACTURE")
-    c.setFont("Helvetica", 10)
-    meta_y -= 18
-    c.drawString(right_col_x, meta_y, f"N°: {order.order_number}")
-    meta_y -= 14
-    c.drawString(right_col_x, meta_y, f"Date: {order.created_at.strftime('%d/%m/%Y')}")
-    meta_y -= 14
-    c.drawString(right_col_x, meta_y, f"Échéance: {due_date}")
-    meta_y -= 16
-    c.setFillColor(accent_color)
-    c.roundRect(right_col_x - 6, meta_y - 6, 160, 20, 6, stroke=0, fill=1)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(right_col_x, meta_y + 2, f"Statut: {order.status.upper()}")
-    c.setFillColor(primary_color)
-    meta_bottom_y = meta_y - 10
-    
-    # Informations client (sous la boutique)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(margin_x, shop_y, "CLIENT")
-    c.setFont("Helvetica", 10)
-    shop_y -= 14
-    c.drawString(margin_x, shop_y, f"{order.customer.first_name} {order.customer.last_name}")
-    shop_y -= 12
-    c.drawString(margin_x, shop_y, f"Email: {order.customer.email}")
-    shop_y -= 12
-    wrapped_shipping = textwrap.wrap(order.shipping_address or "", width=80)
-    for idx, line in enumerate(wrapped_shipping):
-        c.drawString(margin_x, shop_y, f"Adresse: {line}" if idx == 0 else f"        {line}")
-        shop_y -= 10
-    left_bottom_y = shop_y
 
-    y_position = min(left_bottom_y, meta_bottom_y) - 22
-    
+    # Bloc facture (à droite)
+    meta_y = info_y - 8
+    c.setFont("Helvetica", 10)
+    c.drawString(right_col_x, meta_y, f"N°: {order.order_number}")
+    meta_y -= 12
+    c.drawString(right_col_x, meta_y, f"Date: {order.created_at.strftime('%d/%m/%Y')}")
+    meta_y -= 12
+    c.drawString(right_col_x, meta_y, f"Échéance: {due_date}")
+    meta_y -= 18
+    c.setFillColor(accent_color)
+    status_w = 160
+    c.roundRect(right_col_x - 6, meta_y - 6, status_w, 22, 8, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(right_col_x, meta_y + 3, f"Statut: {order.status.upper()}")
+    c.setFillColor(primary_color)
+    meta_bottom_y = meta_y - 12
+
+    # Bloc CLIENT replacé sous les infos boutique (colonne gauche)
+    client_y = shop_y - 4
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin_x, client_y, "CLIENT")
+    c.setFont("Helvetica", 10)
+    client_y -= 14
+    c.drawString(margin_x, client_y, f"{order.customer.first_name} {order.customer.last_name}")
+    client_y -= 12
+    c.drawString(margin_x, client_y, f"Email: {order.customer.email}")
+    client_y -= 12
+    for idx, line in enumerate(textwrap.wrap(order.shipping_address or "", width=wrap_width)):
+        prefix = "Adresse: " if idx == 0 else "        "
+        c.drawString(margin_x, client_y, f"{prefix}{line}")
+        client_y -= 10
+
+    left_bottom_y = client_y
+    y_position = min(left_bottom_y, meta_bottom_y) - 24
+
     # Détails commande
     c.setFont("Helvetica-Bold", 12)
     c.drawString(50, y_position, "DÉTAILS DE LA COMMANDE")
     y_position -= 18
-    
+
     # En-tête tableau
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(margin_x, y_position, "Produit")
-    c.drawString(margin_x + 240, y_position, "Quantité")
-    c.drawString(margin_x + 320, y_position, "Prix")
-    c.drawString(margin_x + 400, y_position, "Total")
-    
-    c.line(margin_x, y_position - 5, width - margin_x, y_position - 5)
-    
+    c.drawString(50, y_position, "Produit")
+    c.drawString(300, y_position, "Quantité")
+    c.drawString(380, y_position, "Prix")
+    c.drawString(460, y_position, "Total")
+
+    c.line(50, y_position - 5, 550, y_position - 5)
+
     # Articles
     y_position -= 18
     c.setFont("Helvetica", 9)
     for item in order.items:
         name = item.product.name if item.product else "Produit"
         for line in textwrap.wrap(name, width=35):
-            c.drawString(margin_x, y_position, line)
+            c.drawString(50, y_position, line)
             y_position -= 10
         y_position += 10  # correct last decrement
-        c.drawString(margin_x + 240, y_position, str(item.quantity))
+        c.drawString(300, y_position, str(item.quantity))
         price_converted = convert_amount(item.price)
         line_total_converted = convert_amount(item.quantity * item.price)
-        c.drawString(margin_x + 320, y_position, f"{format_amount(price_converted)} {currency}")
-        c.drawString(margin_x + 400, y_position, f"{format_amount(line_total_converted)} {currency}")
+        c.drawString(380, y_position, f"{format_amount(price_converted)} {currency}")
+        c.drawString(460, y_position, f"{format_amount(line_total_converted)} {currency}")
         y_position -= 16
-    
+
     # Total
     y_position -= 10
     c.setFont("Helvetica-Bold", 12)
     total_converted = convert_amount(order.total_amount)
-    c.drawString(margin_x + 300, y_position, f"TOTAL: {format_amount(total_converted)} {currency}")
-    
+    c.drawString(400, y_position, f"TOTAL: {format_amount(total_converted)} {currency}")
+
     # QR Code en bas à droite du pied de page
     qr_data = f"""
 Boutique: {shop_name}
@@ -204,26 +223,26 @@ Commande: {order.order_number}
 Total: {format_amount(total_converted)} {currency}
 Date: {order.created_at.strftime('%d/%m/%Y')}
     """
-    
-    qr = qrcode.QRCode(version=1, box_size=3, border=1)
+
+    qr = qrcode.QRCode(version=1, box_size=4, border=2)
     qr.add_data(qr_data)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
-    
+
     qr_buffer = BytesIO()
     qr_img.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
-    
-    qr_size = 70
+
+    qr_size = 90
     qr_x = width - qr_size - 40
     qr_y = 20
     c.drawImage(ImageReader(qr_buffer), qr_x, qr_y, width=qr_size, height=qr_size)
-    
+
     # Pied de page fixe en bas
     c.setFont("Helvetica-Oblique", 8)
     c.drawString(50, 40, f"© Manga Store - Propulsé par Esperdigi")
     c.drawString(50, 28, f"Facture générée le {datetime.now().strftime('%d/%m/%Y à %H:%M')}")
-    
+
     c.save()
     buffer.seek(0)
     return buffer
