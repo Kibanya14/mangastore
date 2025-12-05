@@ -979,6 +979,27 @@ def create_app():
         return render_template('client/index.html', 
                              products=products, 
                              categories=categories)
+
+    @app.route('/categories')
+    def client_categories():
+        try:
+            page = int(request.args.get('page', 1))
+            if page < 1:
+                page = 1
+        except Exception:
+            page = 1
+        per_page = 12
+        query = Category.query.filter_by(is_active=True).order_by(Category.created_at.desc())
+        total = query.count()
+        categories = query.offset((page - 1) * per_page).limit(per_page).all()
+        total_pages = (total // per_page) + (1 if total % per_page else 0)
+        return render_template(
+            'client/categories.html',
+            categories=categories,
+            page=page,
+            total_pages=total_pages,
+            total=total,
+        )
     
     @app.route('/products')
     def products():
