@@ -24,8 +24,11 @@
                         </a>
                         {% for category in categories %}
                         <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
-                           class="block text-gray-600 hover:text-purple-600 transition pl-2 border-l-2 border-transparent hover:border-purple-500">
-                            {{ category.name }}
+                           class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition pl-2 border-l-2 border-transparent hover:border-purple-500">
+                            <span class="inline-flex w-6 h-6 items-center justify-center bg-purple-50 rounded">
+                                <i class="{{ category.icon or 'fas fa-tag' }} text-purple-600 text-xs"></i>
+                            </span>
+                            <span>{{ category.name }}</span>
                         </a>
                         {% endfor %}
                     </div>
