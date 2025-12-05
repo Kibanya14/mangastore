@@ -2064,9 +2064,10 @@ def create_app():
             product.quantity = int(request.form.get('quantity', product.quantity))
             product.category_id = int(request.form.get('category_id', product.category_id))
             product.is_active = request.form.get('is_active') == 'on'
-            # Gérer images additionnelles (URLs ou upload) — on ajoute aux images existantes
+            replace_images = request.form.get('replace_images') == 'on'
+            # Gérer images additionnelles (URLs ou upload)
             image_entries = []
-            if product.images:
+            if not replace_images and product.images:
                 try:
                     existing = [i for i in product.images.split('|') if i]
                     image_entries.extend(existing)
@@ -2104,8 +2105,9 @@ def create_app():
                             except Exception as e:
                                 app.logger.warning(f"Erreur sauvegarde image produit: {e}")
 
-            if image_entries:
-                product.images = '|'.join(image_entries)
+            if replace_images or image_urls_raw or ('images' in request.files and request.files.get('images')):
+                # Si remplacement demandé ou nouvelles images fournies, on met à jour
+                product.images = '|'.join(image_entries) if image_entries else None
 
             db.session.commit()
             flash('Produit modifié avec succès', 'success')

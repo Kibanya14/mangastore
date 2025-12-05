@@ -143,7 +143,7 @@
                     {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
                     <tr id="edit-{{ product.id }}" class="hidden bg-gray-50">
                         <td colspan="6" class="px-6 py-4">
-                            <form action="{{ url_for('admin_edit_product', product_id=product.id) }}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <form action="{{ url_for('admin_edit_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">Nom</label>
@@ -175,6 +175,21 @@
                                 <div class="md:col-span-3">
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">Description</label>
                                     <textarea name="description" rows="2" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">{{ product.description }}</textarea>
+                                </div>
+                                <div>
+                                    <label class="inline-flex items-center space-x-2 text-xs font-semibold text-gray-600 mb-1">
+                                        <input type="checkbox" name="replace_images" class="text-purple-600 rounded">
+                                        <span>Remplacer les images existantes</span>
+                                    </label>
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Images (upload)</label>
+                                    <input type="file" name="images" accept="image/*" multiple class="w-full text-xs">
+                                    <p class="text-[11px] text-gray-500 mt-1">Formats acceptés: png, jpg, jpeg, gif, webp.</p>
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">URLs d'images (une par ligne)</label>
+                                    <textarea name="image_urls" rows="2" placeholder="https://example.com/image.jpg" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
                                 </div>
                                 <div class="md:col-span-3 flex justify-end gap-2">
                                     <button type="button" class="px-3 py-2 border rounded-lg text-gray-700" data-edit-toggle="edit-{{ product.id }}">Annuler</button>
