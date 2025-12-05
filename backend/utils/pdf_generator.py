@@ -8,7 +8,6 @@ import qrcode
 from io import BytesIO
 from datetime import datetime
 import os
-import requests
 from flask import current_app
 from backend.models import ShopSettings
 
@@ -23,32 +22,6 @@ def generate_products_pdf(products, target_currency=None):
     available_currencies = [c.upper() for c in current_app.config.get('AVAILABLE_CURRENCIES', ['USD', 'CDF'])]
     uploads_root = current_app.config.get('UPLOAD_FOLDER', os.path.join('frontend', 'static', 'uploads'))
     shop_name = settings.shop_name if settings and settings.shop_name else "Manga Store"
-    logo_reader = None
-
-    def _image_reader(path: str | None):
-        if not path:
-            return None
-        if str(path).startswith(('http://', 'https://')):
-            try:
-                resp = requests.get(path, timeout=5)
-                resp.raise_for_status()
-                return ImageReader(BytesIO(resp.content))
-            except Exception:
-                return None
-        if os.path.exists(path):
-            try:
-                return ImageReader(path)
-            except Exception:
-                return None
-        return None
-
-    if settings and settings.shop_logo:
-        # Logo peut venir d'une URL (Supabase/public) ou du disque local uploads/logos
-        if str(settings.shop_logo).startswith(('http://', 'https://')):
-            logo_reader = _image_reader(settings.shop_logo)
-        else:
-            candidate = os.path.join(uploads_root, 'logos', settings.shop_logo)
-            logo_reader = _image_reader(candidate)
 
     def get_rate(from_currency: str, to_currency: str) -> float:
         if not from_currency or not to_currency or from_currency == to_currency:
@@ -98,25 +71,6 @@ def generate_products_pdf(products, target_currency=None):
     def _header_footer(canvas, doc):
         width, height = A4
         canvas.saveState()
-        logo_size = 60
-        if logo_reader:
-            try:
-                x = (width - logo_size) / 2
-                y = height - logo_size - 16
-                # cercle fond resserré
-                canvas.setFillColor(colors.white)
-                canvas.setStrokeColor(colors.HexColor("#4c1d95"))
-                canvas.setLineWidth(2)
-                canvas.circle(x + logo_size/2, y + logo_size/2, logo_size/2 + 2, stroke=1, fill=1)
-                # image masquée
-                canvas.saveState()
-                path = canvas.beginPath()
-                path.circle(x + logo_size/2, y + logo_size/2, logo_size/2)
-                canvas.clipPath(path, stroke=0)
-                canvas.drawImage(logo_reader, x, y, width=logo_size, height=logo_size, preserveAspectRatio=True, mask='auto')
-                canvas.restoreState()
-            except Exception:
-                pass
         # Pied de page aligné sur invoice_generator
         canvas.setFont("Helvetica-Oblique", 8)
         canvas.setFillColor(colors.HexColor("#0f172a"))
