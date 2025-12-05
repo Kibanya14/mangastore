@@ -106,6 +106,14 @@
                     <span class="sidebar-text">Catégories{% if not can_view_categories %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
                 </a>
 
+                {% set can_view_tasks = current_user.is_super_admin or current_user.is_admin %}
+                <a href="{{ url_for('admin_tasks') }}" 
+                   class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_tasks' %}bg-purple-600 text-white{% else %}{% if can_view_tasks %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_tasks %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
+                   {% if not can_view_tasks %}aria-disabled="true" title="Accès restreint"{% endif %}>
+                    <i class="fas fa-clipboard-list w-6 text-center"></i>
+                    <span class="sidebar-text">Tâches{% if not can_view_tasks %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                </a>
+
                 {% set can_manage_admins = current_user.is_super_admin or current_user.has_permission('manage_admins') %}
                 <a href="{{ url_for('admin_manage_admins') }}" 
                    class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_manage_admins' %}bg-purple-600 text-white{% else %}{% if can_manage_admins %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_manage_admins %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"

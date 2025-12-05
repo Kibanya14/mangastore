@@ -188,6 +188,21 @@ class ShopSettings(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    action = db.Column(db.String(255), nullable=False)
+    actor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    actor_email = db.Column(db.String(120))
+    actor_name = db.Column(db.String(120))
+    actor_phone = db.Column(db.String(30))
+    extra = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    actor = db.relationship('User', foreign_keys=[actor_id])
+
+
 class AccessRequest(db.Model):
     __tablename__ = 'access_requests'
 

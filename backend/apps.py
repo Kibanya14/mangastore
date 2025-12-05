@@ -7,7 +7,7 @@ import eventlet
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, send_file, current_app, session, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
-from backend.models import db, User, Product, Category, Cart, CartItem, Order, OrderItem, ShopSettings, AccessRequest, Deliverer, DeliveryAssignment, ForumMessage
+from backend.models import db, User, Product, Category, Cart, CartItem, Order, OrderItem, ShopSettings, AccessRequest, Deliverer, DeliveryAssignment, ForumMessage, ActivityLog
 from flask_migrate import Migrate
 from backend.utils import generate_invoice_pdf, generate_products_pdf
 from backend.utils.helpers import get_first_image_url
@@ -717,6 +717,32 @@ def create_app():
             return f(*args, **kwargs)
         return wrapped
 
+    def record_activity(action: str, actor=None, extra: str | None = None):
+        """Enregistre une action (tâche) avec l'acteur et un complément facultatif."""
+        try:
+            actor_id = getattr(actor, 'id', None)
+            actor_email = getattr(actor, 'email', None)
+            first = getattr(actor, 'first_name', '') or ''
+            last = getattr(actor, 'last_name', '') or ''
+            actor_name = f"{first} {last}".strip() or None
+            actor_phone = getattr(actor, 'phone', None)
+            log_entry = ActivityLog(
+                action=action,
+                actor_id=actor_id,
+                actor_email=actor_email,
+                actor_name=actor_name,
+                actor_phone=actor_phone,
+                extra=extra
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            try:
+                app.logger.warning(f"Impossible d'enregistrer l'activité '{action}': {exc}")
+            except Exception:
+                pass
+
     # NOTE: PDF generation functions are provided by backend.utils (generate_invoice_pdf,
     # generate_products_pdf) to avoid duplication and to centralize file path handling.
     @app.before_request
@@ -1371,6 +1397,11 @@ def create_app():
 
                 db.session.commit()
                 sync_cart_count()
+                record_activity(
+                    f"Nouvelle commande #{order.order_number}",
+                    actor=order_user,
+                    extra=f"Total: {total} | Statut: {order.status} | Téléphone: {order_user.phone or '-'}"
+                )
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Erreur lors de la création de la commande: {e}")
@@ -1496,6 +1527,7 @@ def create_app():
             
             db.session.add(user)
             db.session.commit()
+            record_activity("Inscription client", actor=user, extra=f"Tél: {phone or '-'} | Adresse: {address or '-'}")
             
             # Email de bienvenue
             try:
@@ -2272,6 +2304,13 @@ def create_app():
     def admin_categories():
         categories = Category.query.all()
         return render_template('admin/categories.html', categories=categories)
+
+    @app.route('/admin/tasks')
+    @login_required
+    @require_permission()
+    def admin_tasks():
+        logs = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(300).all()
+        return render_template('admin/tasks.html', logs=logs)
     
     @app.route('/admin/categories/add', methods=['POST'])
     @login_required
@@ -2294,6 +2333,7 @@ def create_app():
             
             db.session.add(category)
             db.session.commit()
+            record_activity(f"Ajout catégorie '{name}'", actor=current_user, extra=f"Statut: {'active' if is_active else 'inactive'}")
             flash('Catégorie ajoutée avec succès', 'success')
         except Exception as e:
             flash('Erreur lors de l\'ajout de la catégorie', 'error')
@@ -2310,9 +2350,11 @@ def create_app():
         try:
             category.name = request.form.get('name', category.name)
             category.description = request.form.get('description', category.description)
-            category.is_active = request.form.get('is_active') == 'on'
+            is_active_raw = request.form.get('is_active')
+            category.is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
             
             db.session.commit()
+            record_activity(f"Modification catégorie '{category.name}'", actor=current_user, extra=f"Statut: {'active' if category.is_active else 'inactive'}")
             flash('Catégorie modifiée avec succès', 'success')
         except Exception as e:
             flash('Erreur lors de la modification de la catégorie', 'error')
@@ -2334,6 +2376,7 @@ def create_app():
                 
             db.session.delete(category)
             db.session.commit()
+            record_activity(f"Suppression catégorie '{category.name}'", actor=current_user)
             flash('Catégorie supprimée avec succès', 'success')
         except Exception as e:
             flash('Erreur lors de la suppression de la catégorie', 'error')
