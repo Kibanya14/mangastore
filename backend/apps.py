@@ -1976,6 +1976,8 @@ def create_app():
             price = float(request.form.get('price', 0))
             quantity = int(request.form.get('quantity', 0))
             category_id = int(request.form.get('category_id'))
+            is_active_raw = request.form.get('is_active', 'true')
+            is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
             
             if not all([name, price >= 0, quantity >= 0]):
                 flash('Veuillez remplir tous les champs correctement', 'error')
@@ -1992,7 +1994,8 @@ def create_app():
                 description=description,
                 price=price,
                 quantity=quantity,
-                category_id=category_id
+                category_id=category_id,
+                is_active=is_active
             )
 
             # Gérer les images: upload multiple et/ou URLs
@@ -2063,7 +2066,8 @@ def create_app():
             product.price = float(request.form.get('price', product.price))
             product.quantity = int(request.form.get('quantity', product.quantity))
             product.category_id = int(request.form.get('category_id', product.category_id))
-            product.is_active = request.form.get('is_active') == 'on'
+            is_active_raw = request.form.get('is_active', 'false')
+            product.is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
             replace_images = request.form.get('replace_images') == 'on'
             # Gérer images additionnelles (URLs ou upload)
             image_entries = []
