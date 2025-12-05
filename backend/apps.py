@@ -1933,6 +1933,12 @@ def create_app():
             if not all([name, price >= 0, quantity >= 0]):
                 flash('Veuillez remplir tous les champs correctement', 'error')
                 return redirect(url_for('admin_products'))
+
+            # Unicité nom produit (case-insensitive)
+            existing = Product.query.filter(db.func.lower(Product.name) == name.lower()).first()
+            if existing:
+                flash('Un produit avec ce nom existe déjà.', 'error')
+                return redirect(url_for('admin_products'))
             
             product = Product(
                 name=name,
@@ -1998,7 +2004,14 @@ def create_app():
         product = Product.query.get_or_404(product_id)
         
         try:
-            product.name = request.form.get('name', product.name)
+            new_name = request.form.get('name', product.name)
+            if new_name and new_name.lower() != (product.name or '').lower():
+                dup = Product.query.filter(db.func.lower(Product.name) == new_name.lower(),
+                                           Product.id != product.id).first()
+                if dup:
+                    flash('Un autre produit porte déjà ce nom.', 'error')
+                    return redirect(url_for('admin_products'))
+                product.name = new_name
             product.description = request.form.get('description', product.description)
             product.price = float(request.form.get('price', product.price))
             product.quantity = int(request.form.get('quantity', product.quantity))
@@ -2324,6 +2337,12 @@ def create_app():
             if not name:
                 flash('Le nom de la catégorie est obligatoire', 'error')
                 return redirect(url_for('admin_categories'))
+
+            # Unicité nom (case-insensitive)
+            existing = Category.query.filter(db.func.lower(Category.name) == name.lower()).first()
+            if existing:
+                flash('Cette catégorie existe déjà.', 'error')
+                return redirect(url_for('admin_categories'))
             
             category = Category(
                 name=name,
@@ -2348,7 +2367,15 @@ def create_app():
         category = Category.query.get_or_404(category_id)
         
         try:
-            category.name = request.form.get('name', category.name)
+            new_name = request.form.get('name', category.name)
+            # Vérifier unicité si le nom change
+            if new_name and new_name.lower() != (category.name or '').lower():
+                dup = Category.query.filter(db.func.lower(Category.name) == new_name.lower(),
+                                            Category.id != category.id).first()
+                if dup:
+                    flash('Une autre catégorie porte déjà ce nom.', 'error')
+                    return redirect(url_for('admin_categories'))
+                category.name = new_name
             category.description = request.form.get('description', category.description)
             is_active_raw = request.form.get('is_active')
             category.is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')

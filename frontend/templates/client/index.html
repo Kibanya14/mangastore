@@ -4,12 +4,12 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="gradient-bg text-white py-20">
-    <div class="max-w-7xl mx-auto px-4 text-center">
+<section class="gradient-bg text-white py-14">
+    <div class="max-w-7xl mx-auto px-4 text-center space-y-4">
         <h1 class="text-5xl font-bold mb-6 animate-pulse">
             Bienvenue au {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
         </h1>
-        <p class="text-xl mb-8 opacity-90">
+        <p class="text-lg md:text-xl opacity-90">
             Découvrez notre collection exclusive de produits. Explorez notre boutique, passez votre commande et profitez de nos offres spéciales.
         </p>
         <a href="{{ url_for('products') }}" 
@@ -21,11 +21,19 @@
 </section>
 
 <!-- Catégories -->
-<section class="py-16 bg-white">
+<section class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4">
-        <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">Nos Catégories</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {% for category in categories %}
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-3xl font-bold text-gray-800">Nos Catégories</h2>
+            {% if categories|length > 8 %}
+            <a href="#all-categories" class="text-purple-600 hover:text-purple-700 font-semibold flex items-center space-x-2">
+                <span>Voir toutes</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+            {% for category in categories[:8] %}
             <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
                class="bg-gray-50 rounded-xl p-6 text-center hover-scale shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl">
                 {% if category.image %}
@@ -37,17 +45,57 @@
                 </div>
                 {% endif %}
                 <h3 class="font-semibold text-gray-800 mb-2">{{ category.name }}</h3>
-                <p class="text-sm text-gray-600">{{ category.description[:50] }}...</p>
+                <p class="text-sm text-gray-600">{{ category.description[:50] }}{% if category.description and category.description|length > 50 %}...{% endif %}</p>
             </a>
             {% endfor %}
         </div>
+        {% if categories|length == 0 %}
+        <p class="text-center text-gray-500 mt-4">Aucune catégorie disponible pour le moment.</p>
+        {% endif %}
     </div>
 </section>
 
-<!-- Produits Populaires -->
-<section class="py-16 bg-gray-50">
+{% if categories|length > 8 %}
+<section id="all-categories" class="py-12 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4">
-        <div class="flex justify-between items-center mb-12">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-semibold text-gray-800">Toutes les catégories</h3>
+            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                <button id="prevCatPage" class="px-3 py-1 border border-gray-300 rounded hover:bg-white transition" type="button" aria-label="Page précédente">&larr;</button>
+                <span id="catPageIndicator">1</span>
+                <button id="nextCatPage" class="px-3 py-1 border border-gray-300 rounded hover:bg-white transition" type="button" aria-label="Page suivante">&rarr;</button>
+            </div>
+        </div>
+        {% set page_size = 12 %}
+        {% set total_pages = (categories|length // page_size) + (1 if (categories|length % page_size) > 0 else 0) %}
+        {% for page in range(total_pages) %}
+        {% set start = page * page_size %}
+        {% set end = start + page_size %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-5 cat-page {% if page != 0 %}hidden{% endif %}" data-page="{{ page + 1 }}">
+            {% for category in categories[start:end] %}
+            <a href="{{ url_for('products') }}?category_id={{ category.id }}" 
+               class="bg-white rounded-xl p-5 text-center border border-gray-200 hover:shadow-md transition">
+                {% if category.image %}
+                <img src="{{ media_url('uploads/categories/' + category.image) }}" alt="{{ category.name }}" class="h-14 w-14 mx-auto mb-3 rounded-lg">
+                {% else %}
+                <div class="h-14 w-14 mx-auto mb-3 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-book text-purple-600 text-xl"></i>
+                </div>
+                {% endif %}
+                <div class="font-semibold text-gray-800">{{ category.name }}</div>
+                <div class="text-xs text-gray-600 mt-1">{{ category.description[:60] }}{% if category.description and category.description|length > 60 %}...{% endif %}</div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Produits Populaires -->
+<section class="py-12 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center mb-8">
             <h2 class="text-3xl font-bold text-gray-800">Nouveaux Produits</h2>
             <a href="{{ url_for('products') }}" class="text-purple-600 hover:text-purple-700 font-semibold flex items-center space-x-2">
                 <span>Voir tout</span>
@@ -139,9 +187,9 @@
 </section>
 
 <!-- Features -->
-<section class="py-16 bg-white">
+<section class="py-10 bg-white">
     <div class="max-w-7xl mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="text-center">
                 <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-shipping-fast text-purple-600 text-2xl"></i>
@@ -168,4 +216,39 @@
         </div>
     </div>
 </section>
+
+{% if categories|length > 8 %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const pages = Array.from(document.querySelectorAll('.cat-page'));
+        const indicator = document.getElementById('catPageIndicator');
+        const nextBtn = document.getElementById('nextCatPage');
+        const prevBtn = document.getElementById('prevCatPage');
+        if (!pages.length) return;
+        let current = 1;
+
+        function render() {
+            pages.forEach(p => {
+                p.classList.toggle('hidden', parseInt(p.dataset.page, 10) !== current);
+            });
+            indicator.textContent = current;
+            prevBtn.disabled = current === 1;
+            nextBtn.disabled = current === pages.length;
+        }
+        prevBtn.addEventListener('click', () => {
+            if (current > 1) {
+                current -= 1;
+                render();
+            }
+        });
+        nextBtn.addEventListener('click', () => {
+            if (current < pages.length) {
+                current += 1;
+                render();
+            }
+        });
+        render();
+    });
+</script>
+{% endif %}
 {% endblock %}
