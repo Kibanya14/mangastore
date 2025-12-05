@@ -10,7 +10,7 @@
             Bienvenue au {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
         </h1>
         <p class="text-xl mb-8 opacity-90">
-            Découvrez notre collection exclusive de nos produits, veuillez explorer notre boutique, effectuer votre commande et profiter de nos offres spéciales.
+            Découvrez notre collection exclusive de produits. Explorez notre boutique, passez votre commande et profitez de nos offres spéciales.
         </p>
         <a href="{{ url_for('products') }}" 
            class="bg-white text-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition duration-300 inline-flex items-center space-x-2">
@@ -107,7 +107,7 @@
                             Voir les détails
                         </a>
 
-                        {% if current_user.is_authenticated and product.quantity > 0 %}
+                        {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
                         <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="flex items-center space-x-2">
@@ -120,11 +120,10 @@
                                 </button>
                             </div>
                         </form>
-                        {% elif not current_user.is_authenticated %}
-                        <a href="{{ url_for('client_login') }}" 
-                           class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center">
-                            Connectez-vous pour acheter
-                        </a>
+                        {% elif current_user.is_authenticated and current_user.is_admin %}
+                        <div class="text-center text-xs text-gray-500 py-2 border-t">
+                            Mode administration
+                        </div>
                         {% else %}
                         <button disabled 
                                 class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed">

@@ -28,6 +28,7 @@ from threading import Timer
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from urllib.parse import urljoin
 from collections import defaultdict
+from types import SimpleNamespace
 
 # Patch standard eventlet après avoir configuré ENV
 eventlet.monkey_patch()
@@ -570,13 +571,111 @@ def create_app():
             # Fallback
             return sum(item.quantity for item in cart.items)
 
+    def get_guest_cart():
+        """Panier pour les visiteurs stocké en session: [{product_id, quantity}]."""
+        try:
+            data = session.get('guest_cart', [])
+            if not isinstance(data, list):
+                return []
+            normalized = []
+            for item in data:
+                try:
+                    pid = int(item.get('product_id'))
+                    qty = int(item.get('quantity', 1))
+                except Exception:
+                    continue
+                if qty <= 0:
+                    continue
+                normalized.append({'product_id': pid, 'quantity': qty})
+            return normalized
+        except Exception:
+            return []
+
+    def set_guest_cart(items):
+        """Enregistre le panier invité et met à jour le badge."""
+        try:
+            session['guest_cart'] = items
+            session['cart_count'] = sum(int(i.get('quantity', 0)) for i in items)
+            session.modified = True
+        except Exception:
+            session['guest_cart'] = []
+            session['cart_count'] = 0
+
+    def build_guest_cart_items():
+        """Construit les items de panier pour l'affichage invité avec les objets produit."""
+        items = []
+        total = 0
+        guest_cart = get_guest_cart()
+        if not guest_cart:
+            return items, total
+
+        try:
+            product_ids = [entry['product_id'] for entry in guest_cart]
+            products = Product.query.filter(Product.id.in_(product_ids)).all()
+            product_map = {p.id: p for p in products}
+        except Exception:
+            product_map = {}
+
+        cleaned = []
+        for entry in guest_cart:
+            product = product_map.get(entry.get('product_id'))
+            if not product or not product.is_active:
+                continue
+            qty = min(entry.get('quantity', 1), max(product.quantity or 0, 0)) or 0
+            if qty <= 0:
+                continue
+            cleaned.append({'product_id': product.id, 'quantity': qty})
+            items.append(SimpleNamespace(id=product.id, product=product, quantity=qty))
+            try:
+                total += float(product.price) * qty
+            except Exception:
+                pass
+
+        # Nettoyer le panier si des articles ont été supprimés ou ajustés
+        if cleaned != guest_cart:
+            set_guest_cart(cleaned)
+
+        return items, total
+
+    def merge_guest_cart_into_user(user):
+        """Fusionne le panier invité dans le panier client après connexion."""
+        if not user:
+            return
+        guest_cart = get_guest_cart()
+        if not guest_cart:
+            return
+        try:
+            cart = get_cart_for_user(user.id)
+            product_ids = [entry['product_id'] for entry in guest_cart]
+            products = Product.query.filter(Product.id.in_(product_ids)).all()
+            product_map = {p.id: p for p in products}
+
+            for entry in guest_cart:
+                product = product_map.get(entry.get('product_id'))
+                if not product or not product.is_active:
+                    continue
+                qty = min(entry.get('quantity', 1), max(product.quantity or 0, 0))
+                if qty <= 0:
+                    continue
+                cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product.id).first()
+                if cart_item:
+                    cart_item.quantity = min(cart_item.quantity + qty, max(product.quantity or 0, 0) or qty)
+                else:
+                    db.session.add(CartItem(cart_id=cart.id, product_id=product.id, quantity=qty))
+            db.session.commit()
+            set_guest_cart([])
+            sync_cart_count()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Fusion panier invité échouée: {e}")
+
     def sync_cart_count():
         """Met à jour le compteur panier dans la session pour l'utilisateur courant."""
         try:
             if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
                 session['cart_count'] = get_cart_items_count(current_user.id)
             else:
-                session['cart_count'] = session.get('cart_count', 0)
+                session['cart_count'] = sum(int(i.get('quantity', 0)) for i in get_guest_cart())
         except Exception:
             session['cart_count'] = session.get('cart_count', 0)
 
@@ -627,9 +726,12 @@ def create_app():
             if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
                 session['cart_count'] = get_cart_items_count(current_user.id)
             else:
-                session['cart_count'] = session.get('cart_count', 0)
+                session['cart_count'] = sum(int(i.get('quantity', 0)) for i in get_guest_cart())
         except Exception:
-            session['cart_count'] = session.get('cart_count', 0)
+            try:
+                session['cart_count'] = sum(int(i.get('quantity', 0)) for i in get_guest_cart())
+            except Exception:
+                session['cart_count'] = session.get('cart_count', 0)
     
     # === CONTEXTE GLOBAL POUR TOUS LES TEMPLATES ===
     @app.context_processor
@@ -640,6 +742,9 @@ def create_app():
         try:
             if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
                 cart_items_count = get_cart_items_count(current_user.id)
+                session['cart_count'] = cart_items_count
+            else:
+                cart_items_count = sum(int(i.get('quantity', 0)) for i in get_guest_cart())
                 session['cart_count'] = cart_items_count
         except Exception:
             cart_items_count = session.get('cart_count', cart_items_count)
@@ -878,15 +983,17 @@ def create_app():
         return render_template('client/product_detail.html', product=product)
     
     @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
-    @login_required
     def add_to_cart(product_id):
-        # Empêcher les admins d'ajouter au panier
-        if current_user.is_admin:
+        # Empêcher les admins/livreurs d'ajouter au panier
+        if current_user.is_authenticated and (getattr(current_user, 'is_admin', False) or getattr(current_user, 'is_deliverer', False)):
             flash('Cette fonctionnalité est réservée aux clients', 'error')
-            return redirect(url_for('admin_dashboard'))
-            
+            return redirect(url_for('admin_dashboard') if getattr(current_user, 'is_admin', False) else url_for('index'))
+
         product = Product.query.get_or_404(product_id)
-        quantity = int(request.form.get('quantity', 1))
+        try:
+            quantity = int(request.form.get('quantity', 1))
+        except Exception:
+            quantity = 1
         
         if quantity <= 0:
             flash('Quantité invalide', 'error')
@@ -895,22 +1002,34 @@ def create_app():
         if product.quantity < quantity:
             flash('Stock insuffisant', 'error')
             return redirect(request.referrer or url_for('products'))
-        
-        cart = get_cart_for_user(current_user.id)
-        
-        # Vérifier si le produit est déjà dans le panier
-        cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product_id).first()
-        if cart_item:
-            new_quantity = cart_item.quantity + quantity
-            if new_quantity > product.quantity:
-                flash('Quantité demandée dépasse le stock disponible', 'error')
-                return redirect(request.referrer or url_for('products'))
-            cart_item.quantity = new_quantity
+
+        if current_user.is_authenticated:
+            cart = get_cart_for_user(current_user.id)
+            # Vérifier si le produit est déjà dans le panier
+            cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product_id).first()
+            if cart_item:
+                new_quantity = cart_item.quantity + quantity
+                if new_quantity > product.quantity:
+                    flash('Quantité demandée dépasse le stock disponible', 'error')
+                    return redirect(request.referrer or url_for('products'))
+                cart_item.quantity = new_quantity
+            else:
+                cart_item = CartItem(cart_id=cart.id, product_id=product_id, quantity=quantity)
+                db.session.add(cart_item)
+            db.session.commit()
         else:
-            cart_item = CartItem(cart_id=cart.id, product_id=product_id, quantity=quantity)
-            db.session.add(cart_item)
+            guest_cart = get_guest_cart()
+            existing = next((i for i in guest_cart if i.get('product_id') == product_id), None)
+            if existing:
+                new_quantity = existing.get('quantity', 1) + quantity
+                if new_quantity > product.quantity:
+                    flash('Quantité demandée dépasse le stock disponible', 'error')
+                    return redirect(request.referrer or url_for('products'))
+                existing['quantity'] = new_quantity
+            else:
+                guest_cart.append({'product_id': product_id, 'quantity': quantity})
+            set_guest_cart(guest_cart)
         
-        db.session.commit()
         sync_cart_count()
         flash(f'{product.name} ajouté au panier ({quantity})', 'success')
         return redirect(request.referrer or url_for('products'))
@@ -918,137 +1037,299 @@ def create_app():
     @app.route('/cart')
     def cart():
         # Allow anonymous users to view the cart page. Only logged-in non-admin users have a persisted cart.
-        if current_user.is_authenticated and current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Accès réservé aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
+
+        if current_user.is_authenticated and getattr(current_user, 'is_deliverer', False):
+            flash('Accès réservé aux clients', 'error')
+            return redirect(url_for('deliverer_login_page'))
 
         cart_items = []
         total = 0
 
-        if current_user.is_authenticated and not current_user.is_admin:
+        if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
             cart = Cart.query.filter_by(user_id=current_user.id).first()
             if cart:
                 cart_items = CartItem.query.filter_by(cart_id=cart.id).all()
                 for item in cart_items:
                     total += item.product.price * item.quantity
+        else:
+            cart_items, total = build_guest_cart_items()
 
-        # Anonymous users will see an empty cart page and can click to login for checkout.
         return render_template('client/cart.html', cart_items=cart_items, total=total)
     
     @app.route('/update_cart/<int:item_id>', methods=['POST'])
-    @login_required
     def update_cart(item_id):
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Action réservée aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
+
+        if current_user.is_authenticated and getattr(current_user, 'is_deliverer', False):
+            flash('Action réservée aux clients', 'error')
+            return redirect(url_for('deliverer_login_page'))
+
+        try:
+            quantity = int(request.form.get('quantity', 1))
+        except Exception:
+            quantity = 1
+
+        if current_user.is_authenticated:
+            cart_item = CartItem.query.get_or_404(item_id)
             
-        cart_item = CartItem.query.get_or_404(item_id)
-        
-        # Vérifier que l'article appartient bien à l'utilisateur
-        if cart_item.cart.user_id != current_user.id:
-            flash('Action non autorisée', 'error')
-            return redirect(url_for('cart'))
-            
-        quantity = int(request.form.get('quantity', 1))
-        
-        if quantity <= 0:
-            db.session.delete(cart_item)
-            flash('Article retiré du panier', 'success')
-        else:
-            if quantity > cart_item.product.quantity:
-                flash('Stock insuffisant', 'error')
+            # Vérifier que l'article appartient bien à l'utilisateur
+            if cart_item.cart.user_id != current_user.id:
+                flash('Action non autorisée', 'error')
                 return redirect(url_for('cart'))
-            cart_item.quantity = quantity
-            flash('Quantité mise à jour', 'success')
-        
-        db.session.commit()
+                
+            if quantity <= 0:
+                db.session.delete(cart_item)
+                flash('Article retiré du panier', 'success')
+            else:
+                if quantity > cart_item.product.quantity:
+                    flash('Stock insuffisant', 'error')
+                    return redirect(url_for('cart'))
+                cart_item.quantity = quantity
+                flash('Quantité mise à jour', 'success')
+            
+            db.session.commit()
+        else:
+            guest_cart = get_guest_cart()
+            entry = next((i for i in guest_cart if i.get('product_id') == item_id), None)
+            if not entry:
+                flash('Article introuvable dans votre panier', 'error')
+                return redirect(url_for('cart'))
+
+            product = Product.query.get(item_id)
+            if not product:
+                guest_cart = [i for i in guest_cart if i.get('product_id') != item_id]
+                set_guest_cart(guest_cart)
+                flash('Produit indisponible retiré du panier', 'info')
+                return redirect(url_for('cart'))
+
+            if quantity <= 0:
+                guest_cart = [i for i in guest_cart if i.get('product_id') != item_id]
+                set_guest_cart(guest_cart)
+                flash('Article retiré du panier', 'success')
+            else:
+                if quantity > product.quantity:
+                    flash('Stock insuffisant', 'error')
+                    return redirect(url_for('cart'))
+                entry['quantity'] = quantity
+                set_guest_cart(guest_cart)
+                flash('Quantité mise à jour', 'success')
+
         sync_cart_count()
         return redirect(url_for('cart'))
     
     @app.route('/remove_from_cart/<int:item_id>')
-    @login_required
     def remove_from_cart(item_id):
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Action réservée aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
+
+        if current_user.is_authenticated and getattr(current_user, 'is_deliverer', False):
+            flash('Action réservée aux clients', 'error')
+            return redirect(url_for('deliverer_login_page'))
+
+        if current_user.is_authenticated:
+            cart_item = CartItem.query.get_or_404(item_id)
             
-        cart_item = CartItem.query.get_or_404(item_id)
-        
-        if cart_item.cart.user_id != current_user.id:
-            flash('Action non autorisée', 'error')
-            return redirect(url_for('cart'))
-            
-        product_name = cart_item.product.name
-        db.session.delete(cart_item)
-        db.session.commit()
-        flash(f'{product_name} retiré du panier', 'success')
+            if cart_item.cart.user_id != current_user.id:
+                flash('Action non autorisée', 'error')
+                return redirect(url_for('cart'))
+                
+            product_name = cart_item.product.name
+            db.session.delete(cart_item)
+            db.session.commit()
+            flash(f'{product_name} retiré du panier', 'success')
+        else:
+            guest_cart = get_guest_cart()
+            entry = next((i for i in guest_cart if i.get('product_id') == item_id), None)
+            if not entry:
+                flash('Article introuvable dans votre panier', 'error')
+                return redirect(url_for('cart'))
+            product = Product.query.get(item_id)
+            product_name = product.name if product else 'Article'
+            guest_cart = [i for i in guest_cart if i.get('product_id') != item_id]
+            set_guest_cart(guest_cart)
+            flash(f'{product_name} retiré du panier', 'success')
+
         sync_cart_count()
         return redirect(url_for('cart'))
     
     @app.route('/clear_cart')
-    @login_required
     def clear_cart():
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Action réservée aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
+
+        if current_user.is_authenticated and getattr(current_user, 'is_deliverer', False):
+            flash('Action réservée aux clients', 'error')
+            return redirect(url_for('deliverer_login_page'))
             
-        cart = Cart.query.filter_by(user_id=current_user.id).first()
-        if cart:
-            CartItem.query.filter_by(cart_id=cart.id).delete()
-            db.session.commit()
+        if current_user.is_authenticated:
+            cart = Cart.query.filter_by(user_id=current_user.id).first()
+            if cart:
+                CartItem.query.filter_by(cart_id=cart.id).delete()
+                db.session.commit()
+                flash('Panier vidé', 'success')
+        else:
+            set_guest_cart([])
             flash('Panier vidé', 'success')
+
         sync_cart_count()
         return redirect(url_for('cart'))
     
     @app.route('/checkout', methods=['GET', 'POST'])
-    @login_required
     def checkout():
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Accès réservé aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
-            
-        cart = Cart.query.filter_by(user_id=current_user.id).first()
-        if not cart or not cart.items:
-            flash('Votre panier est vide', 'error')
-            return redirect(url_for('cart'))
-        
+
+        if current_user.is_authenticated and getattr(current_user, 'is_deliverer', False):
+            flash('Accès réservé aux clients', 'error')
+            return redirect(url_for('deliverer_login_page'))
+
+        is_client = current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False)
+
+        def _prefill():
+            data = {
+                'first_name': '',
+                'last_name': '',
+                'email': '',
+                'shipping_address': '',
+                'phone': ''
+            }
+            if is_client:
+                data.update({
+                    'first_name': current_user.first_name or '',
+                    'last_name': current_user.last_name or '',
+                    'email': current_user.email or '',
+                    'shipping_address': current_user.address or '',
+                    'phone': current_user.phone or ''
+                })
+            else:
+                saved = session.get('guest_checkout', {})
+                for key in data:
+                    data[key] = saved.get(key, data[key])
+            return data
+
+        def _load_cart():
+            if is_client:
+                cart_obj = Cart.query.filter_by(user_id=current_user.id).first()
+                items = []
+                total_amt = 0
+                if cart_obj:
+                    items = CartItem.query.filter_by(cart_id=cart_obj.id).all()
+                    for item in items:
+                        if item.product:
+                            total_amt += item.product.price * item.quantity
+                return items, total_amt, cart_obj
+            items, total_amt = build_guest_cart_items()
+            return items, total_amt, None
+
+        prefill = _prefill()
+
         if request.method == 'POST':
-            shipping_address = request.form.get('shipping_address', current_user.address or '')
+            cart_items, total, cart_obj = _load_cart()
+            if not cart_items:
+                flash('Votre panier est vide', 'error')
+                return redirect(url_for('cart'))
+
+            shipping_address = request.form.get('shipping_address', prefill['shipping_address']).strip()
             shipping_lat = request.form.get('shipping_latitude')
             shipping_lon = request.form.get('shipping_longitude')
             shipping_geocoded = request.form.get('shipping_geocoded')
-            
-            if not shipping_address:
-                flash('Veuillez fournir une adresse de livraison', 'error')
-                return redirect(url_for('checkout'))
-            
-            # Vérifier le stock une dernière fois
-            for item in cart.items:
-                if item.quantity > item.product.quantity:
-                    flash(f'Stock insuffisant pour {item.product.name}', 'error')
+            first_name = request.form.get('first_name', prefill['first_name']).strip()
+            last_name = request.form.get('last_name', prefill['last_name']).strip()
+            email = request.form.get('email', prefill['email']).strip()
+            phone = request.form.get('phone', prefill['phone']).strip()
+            order_notes = request.form.get('order_notes', '').strip()
+
+            prefill.update({
+                'first_name': first_name,
+                'last_name': last_name,
+                'email': email,
+                'shipping_address': shipping_address,
+                'phone': phone
+            })
+            if not is_client:
+                session['guest_checkout'] = prefill
+
+            if not all([first_name, last_name, email, phone, shipping_address]):
+                flash('Veuillez compléter vos informations pour finaliser la commande.', 'error')
+                return render_template('client/checkout.html', cart_items=cart_items, total=total, prefill=prefill)
+
+            # Vérifier le stock et recalculer le total
+            total = 0
+            for item in cart_items:
+                product = item.product
+                if not product or not product.is_active:
+                    flash('Un article n’est plus disponible et a été retiré du panier.', 'warning')
+                    if is_client and cart_obj:
+                        try:
+                            db.session.delete(item)
+                            db.session.commit()
+                        except Exception:
+                            db.session.rollback()
+                    else:
+                        # Nettoyer le panier invité
+                        cleaned = [i for i in get_guest_cart() if i.get('product_id') != getattr(item.product, 'id', item.id)]
+                        set_guest_cart(cleaned)
                     return redirect(url_for('cart'))
-            
-            # Créer la commande (opération transactionnelle)
+                if item.quantity > product.quantity:
+                    flash(f'Stock insuffisant pour {product.name}', 'error')
+                    return redirect(url_for('cart'))
+                total += product.price * item.quantity
+
+            # Déterminer l'utilisateur associé à la commande
+            order_user = current_user if is_client else None
+            created_guest_user = False
+            if not is_client:
+                existing_user = User.query.filter_by(email=email).first()
+                if existing_user and (existing_user.is_admin or existing_user.is_super_admin):
+                    flash('Veuillez utiliser une adresse email dédiée aux clients.', 'error')
+                    return render_template('client/checkout.html', cart_items=cart_items, total=total, prefill=prefill)
+                if existing_user:
+                    order_user = existing_user
+                    order_user.first_name = order_user.first_name or first_name
+                    order_user.last_name = order_user.last_name or last_name
+                    order_user.phone = order_user.phone or phone
+                    order_user.address = order_user.address or shipping_address
+                else:
+                    order_user = User(
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        phone=phone,
+                        address=shipping_address,
+                        is_admin=False,
+                        is_super_admin=False
+                    )
+                    order_user.set_password(secrets.token_urlsafe(12))
+                    db.session.add(order_user)
+                    db.session.flush()
+                    created_guest_user = True
+
             try:
                 order_number = generate_order_number()
-                total = sum(item.product.price * item.quantity for item in cart.items)
-
                 order = Order(
                     order_number=order_number,
-                    user_id=current_user.id,
+                    user_id=order_user.id,
                     total_amount=total,
                     shipping_address=shipping_address,
-                    billing_address=current_user.address or shipping_address,
+                    billing_address=order_user.address or shipping_address,
                     status='pending',
                     status_changed_at=datetime.utcnow(),
                     stock_deducted=False,
-                    delivered_at=None
+                    delivered_at=None,
+                    notes=order_notes or None
                 )
 
                 db.session.add(order)
                 db.session.flush()
 
-                # Géolocalisation de l'adresse de livraison (meilleure précision pour les livreurs)
                 lat = lon = None
                 formatted = None
                 try:
@@ -1068,24 +1349,25 @@ def create_app():
                 if formatted:
                     order.shipping_geocoded = formatted
 
-                # Ajouter les articles et mettre à jour le stock
-                for item in cart.items:
-                    # recharger le produit pour éviter stale state
-                    product = Product.query.get(item.product_id)
+                for item in cart_items:
+                    product = Product.query.get(getattr(item.product, 'id', None))
                     if not product or product.quantity < item.quantity:
-                        raise ValueError(f"Stock insuffisant pour {item.product.name}")
+                        raise ValueError(f"Stock insuffisant pour {getattr(item.product, 'name', 'Produit')}")
 
                     order_item = OrderItem(
                         order_id=order.id,
-                        product_id=item.product_id,
+                        product_id=product.id,
                         quantity=item.quantity,
                         price=product.price
                     )
                     db.session.add(order_item)
 
-                # Vider le panier
-                CartItem.query.filter_by(cart_id=cart.id).delete()
-                db.session.delete(cart)
+                if is_client and cart_obj:
+                    CartItem.query.filter_by(cart_id=cart_obj.id).delete()
+                    db.session.delete(cart_obj)
+                else:
+                    set_guest_cart([])
+                    session.pop('guest_checkout', None)
 
                 db.session.commit()
                 sync_cart_count()
@@ -1093,15 +1375,24 @@ def create_app():
                 db.session.rollback()
                 app.logger.error(f"Erreur lors de la création de la commande: {e}")
                 flash('Erreur lors du traitement de la commande. Veuillez réessayer.', 'error')
-                return redirect(url_for('cart'))
-            
-            # Email de confirmation
+                return render_template('client/checkout.html', cart_items=cart_items, total=total, prefill=prefill)
+
+            # Garder une trace pour l'accès invité à la confirmation
+            try:
+                recent_orders = session.get('recent_orders', [])
+                recent_orders = [oid for oid in recent_orders if isinstance(oid, int)]
+                recent_orders.append(order.id)
+                session['recent_orders'] = recent_orders[-5:]
+                session.modified = True
+            except Exception:
+                pass
+
             try:
                 send_email(
-                    to=current_user.email,
+                    to=order_user.email,
                     subject=f'🎉 Confirmation de commande #{order.order_number}',
                     body=f"""
-                    Bonjour {current_user.first_name},
+                    Bonjour {order_user.first_name},
                     
                     Votre commande #{order.order_number} a été enregistrée avec succès!
                     
@@ -1113,8 +1404,6 @@ def create_app():
                     🏠 ADRESSE DE LIVRAISON:
                     {order.shipping_address}
                     
-                    Nous vous tiendrons informé de l'avancement de votre commande.
-                    
                     Merci pour votre confiance!
                     
                     L'équipe Manga Store
@@ -1122,24 +1411,38 @@ def create_app():
                 )
             except Exception as e:
                 print(f"⚠️ Email non envoyé: {e}")
-            
+
+            if created_guest_user:
+                flash('Compte invité créé automatiquement pour suivre votre commande.', 'info')
             flash('Commande passée avec succès! Un email de confirmation vous a été envoyé.', 'success')
             return redirect(url_for('order_confirmation', order_id=order.id))
-        
-        cart_items = CartItem.query.filter_by(cart_id=cart.id).all()
-        total = sum(item.product.price * item.quantity for item in cart_items)
-        
-        return render_template('client/checkout.html', cart_items=cart_items, total=total)
+
+        cart_items, total, _ = _load_cart()
+        if not cart_items:
+            flash('Votre panier est vide', 'error')
+            return redirect(url_for('cart'))
+
+        return render_template('client/checkout.html', cart_items=cart_items, total=total, prefill=prefill)
     
     @app.route('/order_confirmation/<int:order_id>')
-    @login_required
     def order_confirmation(order_id):
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             flash('Accès réservé aux clients', 'error')
             return redirect(url_for('admin_dashboard'))
             
         order = Order.query.get_or_404(order_id)
-        if order.user_id != current_user.id:
+
+        allowed = False
+        if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
+            allowed = order.user_id == current_user.id
+        if not allowed:
+            try:
+                recent_orders = session.get('recent_orders', [])
+                allowed = order.id in recent_orders
+            except Exception:
+                allowed = False
+
+        if not allowed:
             flash('Commande non trouvée', 'error')
             return redirect(url_for('index'))
         
@@ -1330,6 +1633,7 @@ def create_app():
 
             if user and user.is_active and user.check_password(password):
                 login_user(user, remember=True)
+                merge_guest_cart_into_user(user)
                 flash(f'Bienvenue {user.first_name}!', 'success')
                 next_page = request.args.get('next')
                 return redirect(next_page) if next_page else redirect(url_for('index'))
@@ -3241,17 +3545,28 @@ def create_app():
             return redirect(url_for('admin_order_detail', order_id=order_id))
 
     @app.route('/order/<int:order_id>/invoice')
-    @login_required
     def client_download_invoice(order_id):
         order = Order.query.get_or_404(order_id)
-        if current_user.is_admin:
+        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
             return redirect(url_for('admin_download_invoice', order_id=order_id, currency=request.args.get('currency')))
-        if order.user_id != current_user.id:
+
+        allowed = False
+        if current_user.is_authenticated and not getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False):
+            allowed = order.user_id == current_user.id
+        if not allowed:
+            try:
+                allowed = order.id in session.get('recent_orders', [])
+            except Exception:
+                allowed = False
+
+        if not allowed:
             flash('Accès non autorisé à cette commande.', 'error')
-            return redirect(url_for('client_orders'))
+            redirect_target = url_for('client_orders') if current_user.is_authenticated else url_for('index')
+            return redirect(redirect_target)
+
         if order.status != 'delivered':
             flash('La facture sera disponible une fois la commande livrée.', 'error')
-            return redirect(request.referrer or url_for('client_orders'))
+            return redirect(request.referrer or (url_for('client_orders') if current_user.is_authenticated else url_for('index')))
 
         currency_param = _normalize_currency_param(request.args.get('currency'))
         if request.args.get('currency') and not currency_param:
@@ -3266,7 +3581,7 @@ def create_app():
                 mimetype='application/pdf'
             )
         flash('Erreur lors de la génération de la facture', 'error')
-        return redirect(request.referrer or url_for('client_orders'))
+        return redirect(request.referrer or (url_for('client_orders') if current_user.is_authenticated else url_for('index')))
 
     @app.route('/admin/request-access', methods=['POST'])
     @login_required

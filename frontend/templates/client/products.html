@@ -135,7 +135,7 @@
                                 Voir les détails
                             </a>
 
-                            {% if current_user.is_authenticated and not current_user.is_admin and product.quantity > 0 %}
+                            {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
                             <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div class="flex items-center space-x-2">
@@ -148,12 +148,7 @@
                                     </button>
                                 </div>
                             </form>
-                            {% elif not current_user.is_authenticated %}
-                            <a href="{{ url_for('client_login') }}" 
-                               class="block w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition text-center text-sm">
-                                Se connecter
-                            </a>
-                            {% elif current_user.is_admin %}
+                            {% elif current_user.is_authenticated and current_user.is_admin %}
                             <div class="text-center text-xs text-gray-500 py-2 border-t">
                                 Mode administration
                             </div>
