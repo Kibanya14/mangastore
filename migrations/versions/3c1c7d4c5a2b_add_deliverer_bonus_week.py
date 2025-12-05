@@ -17,9 +17,16 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('deliverers', sa.Column('last_bonus_week_start', sa.Date(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "last_bonus_week_start" not in cols:
+        op.add_column('deliverers', sa.Column('last_bonus_week_start', sa.Date(), nullable=True))
 
 
 def downgrade():
-    op.drop_column('deliverers', 'last_bonus_week_start')
-
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "last_bonus_week_start" in cols:
+        op.drop_column('deliverers', 'last_bonus_week_start')

@@ -27,7 +27,6 @@ def upgrade():
 
     # Mettre is_active à TRUE pour les enregistrements existants
     op.execute("UPDATE users SET is_active = TRUE WHERE is_active IS NULL")
-    # ### end Alembic commands ###
 
 
 def downgrade():

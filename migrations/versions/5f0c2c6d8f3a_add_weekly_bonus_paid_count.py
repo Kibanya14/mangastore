@@ -17,10 +17,17 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('deliverers', sa.Column('weekly_bonus_paid_count', sa.Integer(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "weekly_bonus_paid_count" not in cols:
+        op.add_column('deliverers', sa.Column('weekly_bonus_paid_count', sa.Integer(), nullable=True))
     op.execute("UPDATE deliverers SET weekly_bonus_paid_count = 0 WHERE weekly_bonus_paid_count IS NULL")
 
 
 def downgrade():
-    op.drop_column('deliverers', 'weekly_bonus_paid_count')
-
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    cols = {c["name"] for c in inspector.get_columns("deliverers")}
+    if "weekly_bonus_paid_count" in cols:
+        op.drop_column('deliverers', 'weekly_bonus_paid_count')

@@ -19,8 +19,9 @@ depends_on = None
 def _dedupe_users(conn):
     """Keep the oldest user per email and repoint FK references before deleting extras."""
     duplicates = conn.execute(sa.text("""
-        SELECT email, MIN(id) AS keep_id, array_agg(id ORDER BY id) AS ids
+        SELECT email, MIN(id) AS keep_id, COUNT(*) AS cnt
         FROM users
+        WHERE email IS NOT NULL
         GROUP BY email
         HAVING COUNT(*) > 1
     """)).mappings().all()
@@ -35,7 +36,12 @@ def _dedupe_users(conn):
 
     for dup in duplicates:
         keep_id = dup["keep_id"]
-        for user_id in dup["ids"]:
+        email = dup["email"]
+        ids = [row["id"] for row in conn.execute(
+            sa.text("SELECT id FROM users WHERE email = :email ORDER BY id"),
+            {"email": email}
+        ).mappings().all()]
+        for user_id in ids:
             if user_id == keep_id:
                 continue
             for table, column in fk_updates:
@@ -47,8 +53,9 @@ def _dedupe_users(conn):
 def _dedupe_deliverers(conn):
     """Keep the oldest deliverer per email and repoint FK references before deleting extras."""
     duplicates = conn.execute(sa.text("""
-        SELECT email, MIN(id) AS keep_id, array_agg(id ORDER BY id) AS ids
+        SELECT email, MIN(id) AS keep_id, COUNT(*) AS cnt
         FROM deliverers
+        WHERE email IS NOT NULL
         GROUP BY email
         HAVING COUNT(*) > 1
     """)).mappings().all()
@@ -60,7 +67,12 @@ def _dedupe_deliverers(conn):
 
     for dup in duplicates:
         keep_id = dup["keep_id"]
-        for deliverer_id in dup["ids"]:
+        email = dup["email"]
+        ids = [row["id"] for row in conn.execute(
+            sa.text("SELECT id FROM deliverers WHERE email = :email ORDER BY id"),
+            {"email": email}
+        ).mappings().all()]
+        for deliverer_id in ids:
             if deliverer_id == keep_id:
                 continue
             for table, column in fk_updates:
@@ -71,20 +83,27 @@ def _dedupe_deliverers(conn):
 
 def upgrade():
     conn = op.get_bind()
+    dialect = conn.dialect.name
     # Assurer is_active non NULL/defaut TRUE
     conn.execute(sa.text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
-    op.alter_column('users', 'is_active', existing_type=sa.Boolean(), server_default=sa.true(), nullable=False)
+    # SQLite ne supporte pas ALTER COLUMN: on saute pour éviter l'erreur "near ALTER"
+    if dialect != 'sqlite':
+        op.alter_column('users', 'is_active', existing_type=sa.Boolean(), server_default=sa.true(), nullable=False)
 
     # Nettoyer les doublons d'emails avant de restaurer l'unicité
     _dedupe_users(conn)
     _dedupe_deliverers(conn)
 
-    # Restaurer l'unicité des emails
-    op.create_unique_constraint('users_email_key', 'users', ['email'], postgresql_nulls_not_distinct=False)
-    op.create_unique_constraint('deliverers_email_key', 'deliverers', ['email'], postgresql_nulls_not_distinct=False)
+    # Restaurer l'unicité des emails (batch pour compatibilité SQLite)
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.create_unique_constraint('users_email_key', ['email'])
+    with op.batch_alter_table('deliverers', schema=None) as batch_op:
+        batch_op.create_unique_constraint('deliverers_email_key', ['email'])
 
 
 def downgrade():
-    op.drop_constraint('users_email_key', 'users', type_='unique')
-    op.drop_constraint('deliverers_email_key', 'deliverers', type_='unique')
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.drop_constraint('users_email_key', type_='unique')
+    with op.batch_alter_table('deliverers', schema=None) as batch_op:
+        batch_op.drop_constraint('deliverers_email_key', type_='unique')
     # On laisse is_active en place
