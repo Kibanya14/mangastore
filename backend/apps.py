@@ -260,6 +260,12 @@ def create_app():
         ("fas fa-female", "Féminité / Fertilité"),
         ("fas fa-burn", "Brûleur / Métabolisme"),
         ("fas fa-shield-alt", "Immunité"),
+        ("fas fa-tint", "Reins / Détox"),
+        ("fas fa-concierge-bell", "Services"),
+        ("fas fa-chalkboard-teacher", "Formations"),
+        ("fas fa-blender", "Électroménager"),
+        ("fas fa-mobile-alt", "Mobiles"),
+        ("fas fa-laptop", "Ordinateurs"),
     ]
 
     PERMISSION_LABELS = {
