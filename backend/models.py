@@ -90,6 +90,7 @@ class Category(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     image = db.Column(db.String(255))
+    icon = db.Column(db.String(80))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     

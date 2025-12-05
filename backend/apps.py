@@ -241,6 +241,26 @@ def create_app():
     
     # === UTILITAIRES ===
     _rate_cache = {'data': {}, 'timestamp': 0}
+    CATEGORY_ICON_CHOICES = [
+        ("fas fa-heartbeat", "Santé / Général"),
+        ("fas fa-flask", "Complément / Détox"),
+        ("fas fa-bolt", "Énergie / Performance"),
+        ("fas fa-apple-alt", "Nutrition / Alimentaire"),
+        ("fas fa-dumbbell", "Sport / Fitness"),
+        ("fas fa-brain", "Cerveau / Neuro"),
+        ("fas fa-procedures", "Sommeil / Détente"),
+        ("fas fa-spa", "Beauté / Soin"),
+        ("fas fa-baby", "Croissance / Bébé"),
+        ("fas fa-user-md", "Hypertension / Cardiologie"),
+        ("fas fa-lungs", "Respiratoire"),
+        ("fas fa-leaf", "Plantes / Nature"),
+        ("fas fa-tablets", "Patch / Traitement"),
+        ("fas fa-eye", "Vue"),
+        ("fas fa-male", "Prostate / Masculin"),
+        ("fas fa-female", "Féminité / Fertilité"),
+        ("fas fa-burn", "Brûleur / Métabolisme"),
+        ("fas fa-shield-alt", "Immunité"),
+    ]
 
     PERMISSION_LABELS = {
         'view_products': 'Voir produits',
@@ -874,7 +894,7 @@ def create_app():
             'current_user_id': getattr(current_user, 'id', None),
             'current_user_role': ('deliverer' if getattr(current_user, 'is_deliverer', False) else ('admin' if getattr(current_user, 'is_admin', False) else 'client')) if current_user.is_authenticated else None,
             'current_user_name': f"{getattr(current_user, 'first_name', '')} {getattr(current_user, 'last_name', '')}".strip() if current_user.is_authenticated else None,
-            'ice_servers': ice_servers
+            'ice_servers': ice_servers,
         }
 
     @app.route('/set-currency', methods=['POST'])
@@ -2337,7 +2357,7 @@ def create_app():
     @require_permission('view_categories')
     def admin_categories():
         categories = Category.query.all()
-        return render_template('admin/categories.html', categories=categories)
+        return render_template('admin/categories.html', categories=categories, category_icons=CATEGORY_ICON_CHOICES)
 
     @app.route('/admin/tasks')
     @login_required
@@ -2354,6 +2374,7 @@ def create_app():
             name = request.form.get('name')
             description = request.form.get('description', '')
             is_active = request.form.get('is_active', 'true') == 'true'
+            icon = request.form.get('icon') or None
             
             if not name:
                 flash('Le nom de la catégorie est obligatoire', 'error')
@@ -2368,7 +2389,8 @@ def create_app():
             category = Category(
                 name=name,
                 description=description,
-                is_active=is_active
+                is_active=is_active,
+                icon=icon
             )
             
             db.session.add(category)
@@ -2400,6 +2422,7 @@ def create_app():
             category.description = request.form.get('description', category.description)
             is_active_raw = request.form.get('is_active')
             category.is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
+            category.icon = request.form.get('icon') or category.icon
             
             db.session.commit()
             record_activity(f"Modification catégorie '{category.name}'", actor=current_user, extra=f"Statut: {'active' if category.is_active else 'inactive'}")
