@@ -21,6 +21,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_super_admin = db.Column(db.Boolean, default=False)
     permissions = db.Column(db.Text)  # JSON des permissions
+    last_forum_seen_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)  # permet de bloquer/débloquer un compte
     is_deliverer = False
@@ -60,6 +61,7 @@ class Deliverer(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_bonus_week_start = db.Column(db.Date)  # Date du lundi de la dernière prime hebdo payée
     weekly_bonus_paid_count = db.Column(db.Integer, default=0)  # Nombre de bonus 5$ déjà payés cette semaine
+    last_forum_seen_at = db.Column(db.DateTime)
 
     assignments = db.relationship('DeliveryAssignment', backref='deliverer', lazy=True, cascade='all, delete-orphan')
 

@@ -67,6 +67,15 @@
             70% { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
             100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
         }
+        .nav-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            line-height: 1;
+            padding: 4px 7px;
+            border-radius: 999px;
+            margin-left: 6px;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col {% if session.get('theme') == 'dark' %}dark{% endif %}">
@@ -112,8 +121,11 @@
                         <i class="fas fa-circle-info mr-1"></i>À propos
                     </a>
                     {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('forum') }}" class="text-gray-600 hover:text-purple-600 transition">
-                        <i class="fas fa-comments mr-1"></i>Forum
+                    <a href="{{ url_for('forum') }}" class="text-gray-600 hover:text-purple-600 transition flex items-center relative">
+                        <i class="fas fa-comments mr-1"></i><span>Forum</span>
+                        {% if forum_unread_count %}
+                        <span class="nav-badge">{{ forum_unread_count }}</span>
+                        {% endif %}
                     </a>
                     {% endif %}
                     
@@ -219,8 +231,11 @@
                     <i class="fas fa-circle-info mr-2"></i>À propos
                 </a>
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-comments mr-2"></i>Forum
+                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-purple-600 py-2 flex items-center gap-2">
+                    <i class="fas fa-comments"></i><span>Forum</span>
+                    {% if forum_unread_count %}
+                    <span class="nav-badge">{{ forum_unread_count }}</span>
+                    {% endif %}
                 </a>
                 {% endif %}
                 {% if not (current_user.is_authenticated and current_user.is_admin) %}

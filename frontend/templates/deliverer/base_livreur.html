@@ -41,6 +41,14 @@
             border-top: 1px solid #e5e7eb;
             z-index: 30;
         }
+        .nav-badge {
+            background: #ef4444;
+            color: #fff;
+            font-size: 11px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            line-height: 1;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-gray-100" style="padding-bottom: 88px;">
@@ -77,6 +85,14 @@
                     <a href="{{ url_for('deliverer_about') }}" class="text-gray-600 hover:text-emerald-600 transition flex items-center gap-2">
                         <i class="fas fa-circle-info"></i>
                         <span class="font-medium">À propos</span>
+                    </a>
+
+                    <a href="{{ url_for('forum') }}" class="text-gray-600 hover:text-emerald-600 transition flex items-center gap-2 relative">
+                        <i class="fas fa-comments"></i>
+                        <span class="font-medium">Forum</span>
+                        {% if forum_unread_count %}
+                        <span class="nav-badge">{{ forum_unread_count }}</span>
+                        {% endif %}
                     </a>
 
                     <!-- Devise selector -->
@@ -151,6 +167,14 @@
                 <a href="{{ url_for('deliverer_about') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
                     <i class="fas fa-circle-info text-emerald-600"></i>
                     <span>À propos</span>
+                </a>
+
+                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
+                    <i class="fas fa-comments text-emerald-600"></i>
+                    <span>Forum</span>
+                    {% if forum_unread_count %}
+                    <span class="nav-badge">{{ forum_unread_count }}</span>
+                    {% endif %}
                 </a>
 
                 <!-- Devise mobile -->

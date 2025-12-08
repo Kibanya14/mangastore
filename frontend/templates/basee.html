@@ -34,6 +34,7 @@
         .currency-select { background: #fff; border-radius: 999px; padding: 6px 10px; }
         .logo-round { height: 48px; width: 48px; border-radius: 999px; object-fit: cover; }
         .toggle-btn { border: 1px solid #e5e7eb; border-radius: 999px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #111827; }
+        .nav-badge { background: #ef4444; color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 999px; margin-left: 8px; line-height: 1; }
     </style>
 </head>
 <body class="{% if session.get('theme') == 'dark' %}dark{% endif %}" data-theme="">
@@ -79,7 +80,12 @@
                    class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin_orders' %}bg-purple-600 text-white{% else %}{% if can_view_orders %}text-gray-300 hover:bg-gray-700 hover:text-white{% else %}text-gray-500{% endif %}{% endif %} transition {% if not can_view_orders %}opacity-50 cursor-not-allowed inactive-feature{% endif %}"
                    {% if not can_view_orders %}aria-disabled="true" title="Accès restreint"{% endif %}>
                     <i class="fas fa-shopping-cart w-6 text-center"></i>
-                    <span class="sidebar-text">Commandes{% if not can_view_orders %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}</span>
+                    <span class="sidebar-text flex items-center gap-2">
+                        Commandes{% if not can_view_orders %} <span class="ml-2 inline-block text-xs bg-gray-600 text-white px-2 rounded">Inactif</span>{% endif %}
+                        {% if pending_orders_count %}
+                        <span class="nav-badge">{{ pending_orders_count }}</span>
+                        {% endif %}
+                    </span>
                 </a>
 
                 {% set can_manage_deliverers = current_user.has_permission('manage_deliverers') or current_user.is_super_admin %}
@@ -125,7 +131,12 @@
                 <a href="{{ url_for('forum') }}" 
                    class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'forum' %}bg-purple-600 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} transition">
                     <i class="fas fa-comments w-6 text-center"></i>
-                    <span class="sidebar-text">Forum</span>
+                    <span class="sidebar-text flex items-center gap-2">
+                        Forum
+                        {% if forum_unread_count %}
+                        <span class="nav-badge">{{ forum_unread_count }}</span>
+                        {% endif %}
+                    </span>
                 </a>
 
                 {% if current_user.is_super_admin %}

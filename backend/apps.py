@@ -812,6 +812,28 @@ def create_app():
         except Exception:
             access_request_count = 0
 
+        forum_unread_count = 0
+        try:
+            if current_user.is_authenticated:
+                last_seen = getattr(current_user, 'last_forum_seen_at', None)
+                q = ForumMessage.query
+                if last_seen:
+                    q = q.filter(ForumMessage.created_at > last_seen)
+                if getattr(current_user, 'is_deliverer', False):
+                    q = q.filter(or_(ForumMessage.deliverer_id.is_(None), ForumMessage.deliverer_id != getattr(current_user, 'id', None)))
+                else:
+                    q = q.filter(or_(ForumMessage.user_id.is_(None), ForumMessage.user_id != getattr(current_user, 'id', None)))
+                forum_unread_count = int(q.count())
+        except Exception:
+            forum_unread_count = 0
+
+        pending_orders_count = 0
+        try:
+            if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
+                pending_orders_count = Order.query.filter_by(status='pending').count()
+        except Exception:
+            pending_orders_count = 0
+
         # Fournir l'année courante pour les footers et templates
         try:
             current_year = datetime.now().year
@@ -901,6 +923,8 @@ def create_app():
             'current_user_role': ('deliverer' if getattr(current_user, 'is_deliverer', False) else ('admin' if getattr(current_user, 'is_admin', False) else 'client')) if current_user.is_authenticated else None,
             'current_user_name': f"{getattr(current_user, 'first_name', '')} {getattr(current_user, 'last_name', '')}".strip() if current_user.is_authenticated else None,
             'ice_servers': ice_servers,
+            'forum_unread_count': forum_unread_count,
+            'pending_orders_count': pending_orders_count,
         }
 
     @app.route('/set-currency', methods=['POST'])
@@ -3262,61 +3286,18 @@ def create_app():
         return role, name, avatar, user_id
 
     def _forum_online_users():
-        """Liste simplifiée des utilisateurs visibles comme 'en ligne', sans doublons."""
+        """Affiche uniquement l'utilisateur connecté comme présent."""
         online = []
-        seen = set()
-
-        def add_entry(role, name, status, avatar=None, user_id=None, is_me=False):
-            key = (role, user_id or name)
-            if key in seen:
-                return
-            seen.add(key)
+        try:
+            role, name, avatar, uid = _forum_author_data()
             online.append({
                 'name': name,
                 'role': role,
-                'status': status,
+                'status': 'En ligne',
                 'avatar': avatar,
-                'is_me': is_me,
-                'user_id': user_id
+                'is_me': True,
+                'user_id': uid
             })
-
-        try:
-            role, name, avatar, uid = _forum_author_data()
-            add_entry(role, name, 'En ligne', avatar, uid, True)
-        except Exception:
-            pass
-        # Livreurs disponibles/busy
-        try:
-            deliverers = Deliverer.query.filter(Deliverer.status != 'offline').all()
-            for d in deliverers:
-                avatar = None
-                if d.profile_picture:
-                    avatar = d.profile_picture if str(d.profile_picture).startswith(('http://', 'https://')) else url_for('static', filename='uploads/profiles/' + d.profile_picture)
-                add_entry(
-                    'livreur',
-                    f"{d.first_name} {d.last_name}",
-                    status_fr_helper(d.status, 'deliverer'),
-                    avatar,
-                    d.id,
-                    bool(getattr(current_user, 'is_deliverer', False) and getattr(current_user, 'id', None) == d.id)
-                )
-        except Exception:
-            pass
-        # Admins (pas de status online réel, mais visibles)
-        try:
-            admins = User.query.filter_by(is_admin=True).all()
-            for a in admins:
-                avatar = None
-                if a.profile_picture:
-                    avatar = a.profile_picture if str(a.profile_picture).startswith(('http://', 'https://')) else url_for('static', filename='uploads/profiles/' + a.profile_picture)
-                add_entry(
-                    'admin',
-                    f"{a.first_name} {a.last_name}",
-                    'En ligne',
-                    avatar,
-                    a.id,
-                    bool(getattr(current_user, 'is_admin', False) and not getattr(current_user, 'is_deliverer', False) and getattr(current_user, 'id', None) == a.id)
-                )
         except Exception:
             pass
         return online
@@ -3457,6 +3438,24 @@ def create_app():
             template = 'deliverer/forum.html'
         elif getattr(current_user, 'is_admin', False):
             template = 'admin/forum.html'
+
+        try:
+            latest = messages[0].created_at if messages else None
+            if latest:
+                if getattr(current_user, 'is_deliverer', False):
+                    if not current_user.last_forum_seen_at or current_user.last_forum_seen_at < latest:
+                        current_user.last_forum_seen_at = latest
+                        db.session.commit()
+                else:
+                    if not current_user.last_forum_seen_at or current_user.last_forum_seen_at < latest:
+                        current_user.last_forum_seen_at = latest
+                        db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
         return render_template(
             template,
             messages=messages,
