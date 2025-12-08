@@ -3,14 +3,23 @@
 {% block title %}À propos - Manga Store{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-12 space-y-6">
-    <h1 class="text-3xl font-bold text-gray-900">À propos de Manga Store</h1>
+<div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
+    <div class="flex items-start gap-3">
+        <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+            <i class="fas fa-circle-info text-xl"></i>
+        </div>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">À propos de {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}</h1>
+            <p class="text-gray-600">Boutique en ligne légale et enregistrée à Kinshasa. Fiabilité, suivi transparent et support réactif.</p>
+        </div>
+    </div>
 
-    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+    <div class="bg-white rounded-xl shadow p-6 space-y-5">
         <div class="space-y-2">
-            <h2 class="text-xl font-semibold text-gray-800">Qui sommes-nous ?</h2>
+            <h2 class="text-xl font-semibold text-gray-800">Identité & direction</h2>
             <p class="text-gray-700 leading-relaxed">
-                Manga Store est une boutique en ligne légale et enregistrée, dédiée à la vente de produits variés avec un suivi de commande transparent. La direction opérationnelle est assurée par notre équipe interne (Maniana Ngayo / Manga Store) et les responsables de la boutique indiqués ci-dessous.
+                {{ shop_settings.shop_name if shop_settings else 'Manga Store' }} opère sous la direction de <strong>M. Maniana Ngayo</strong> pour <strong>Manga STORE RDC SARLU</strong>. Notre activité est déclarée et facturée conformément à la réglementation locale.
             </p>
         </div>
 
@@ -18,45 +27,71 @@
             <div class="p-4 bg-gray-50 rounded-lg space-y-2">
                 <h3 class="font-semibold text-gray-800">Responsables & contacts</h3>
                 <ul class="text-sm text-gray-700 space-y-1">
-                    <li><strong>Responsable boutique :</strong> Équipe Manga Store (Maniana Ngayo)</li>
-                    <li><strong>Contact :</strong> {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }}</li>
-                    <li><strong>Téléphone :</strong> {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}</li>
-                    <li><strong>Adresse :</strong> Disponible sur demande / facture</li>
+                    <li><strong>Équipe de gestion :</strong> Manga STORE RDC SARLU (Direction : M. Maniana Ngayo)</li>
+                    <li><strong>Email :</strong> {{ contact_email }}</li>
+                    <li><strong>Téléphone :</strong> {{ shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' }}</li>
+                    <li><strong>Adresse :</strong> Kinshasa — détails complets disponibles sur facture ou sur demande.</li>
                 </ul>
             </div>
             <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-                <h3 class="font-semibold text-gray-800">Services proposés</h3>
+                <h3 class="font-semibold text-gray-800">Services premium</h3>
                 <ul class="text-sm text-gray-700 space-y-1">
                     <li>Catalogue multi-produits avec descriptifs clairs</li>
-                    <li>Suivi de commande et notifications</li>
+                    <li>Suivi de commande et notifications en temps réel</li>
                     <li>Livraison optimisée avec géolocalisation</li>
-                    <li>Support client réactif</li>
+                    <li>Support client réactif (WhatsApp, email, téléphone)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-white border border-purple-100 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Pourquoi nous faire confiance ?</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>Entreprise déclarée avec facturation officielle</li>
+                    <li>Transparence sur la disponibilité et les délais</li>
+                    <li>Paiements sécurisés et confirmations automatiques</li>
+                    <li>Traçabilité des commandes du panier à la livraison</li>
+                </ul>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Mission, vision, valeurs</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li><strong>Mission :</strong> rendre l’achat en ligne fiable et simple en RDC.</li>
+                    <li><strong>Vision :</strong> devenir la référence e-commerce premium locale.</li>
+                    <li><strong>Valeurs :</strong> transparence, qualité, réactivité, proximité client.</li>
                 </ul>
             </div>
         </div>
 
         <div class="p-4 bg-white border border-purple-100 rounded-lg space-y-2">
-            <h3 class="font-semibold text-gray-800">Conception et réalisation</h3>
+            <h3 class="font-semibold text-gray-800">Conception et support technique</h3>
             <p class="text-sm text-gray-700">
-                La plateforme Manga Store a été conçue et intégrée par <strong>Esperdigi Technologie</strong>, société de services digitaux et technologiques, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
+                La plateforme {{ shop_settings.shop_name if shop_settings else 'Manga Store' }} a été conçue et intégrée par <strong>Esperdigi Technologie</strong>, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
             </p>
             <p class="text-sm text-gray-600">
-                Esperdigi accompagne Manga Store sur le développement web, l’optimisation technique et le support évolutif de la boutique.
+                Esperdigi assure le développement, l’optimisation et le support évolutif de la boutique.
             </p>
         </div>
 
         <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-            <h3 class="font-semibold text-gray-800">Engagements légaux & confiance</h3>
+            <h3 class="font-semibold text-gray-800">Engagements légaux & confidentialité</h3>
             <ul class="text-sm text-gray-700 space-y-1">
-                <li>Politique de confidentialité et respect des données clients</li>
-                <li>Facturation conforme et informations légales sur les documents</li>
-                <li>Transparence sur l’origine et la disponibilité des produits</li>
+                <li>Politique de confidentialité et protection des données clients</li>
+                <li>Facturation conforme avec mentions légales sur les documents</li>
+                <li>Processus de retour clair et traçable</li>
             </ul>
         </div>
     </div>
 
-    <p class="text-gray-600 text-sm">
-        Besoin d’aide ? Contactez-nous à {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou via le formulaire de contact du site.
-    </p>
+    <div class="p-4 bg-purple-50 border border-purple-100 rounded-lg text-sm text-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <p class="font-semibold text-gray-800">Besoin d’aide ou d’un devis ?</p>
+            <p>Écrivez-nous à {{ contact_email }} ou sur WhatsApp. Réponse rapide garantie.</p>
+        </div>
+        <a href="https://wa.me/{{ (shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000')|replace(' ', '')|replace('+', '') }}" target="_blank" rel="noopener" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-center">
+            Contacter le support
+        </a>
+    </div>
 </div>
 {% endblock %}

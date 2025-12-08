@@ -40,6 +40,33 @@
             align-items: center;
             justify-content: center;
         }
+        .whatsapp-btn {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            background: #25d366;
+            color: white;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.35);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-weight: 700;
+            z-index: 60;
+        }
+        .whatsapp-btn:hover {
+            background: #1ebe5d;
+            transform: translateY(-1px);
+        }
+        .whatsapp-pulse {
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.35); }
+            70% { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col {% if session.get('theme') == 'dark' %}dark{% endif %}">
@@ -242,25 +269,61 @@
 
     <!-- Footer -->
     <footer class="bg-gray-800 text-white mt-16">
-        <div class="max-w-7xl mx-auto px-4 py-8">
-            <div class="text-center">
-                <p class="text-gray-300">
-                    © 2025 {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}. Propulsé par Esperdigi. Tous droits réservés.
-                </p>
-                <div class="mt-4 flex justify-center space-x-6">
-                    <a href="#" class="text-gray-300 hover:text-white transition">
-                        <i class="fab fa-facebook text-xl"></i>
-                    </a>
-                    <a href="#" class="text-gray-300 hover:text-white transition">
-                        <i class="fab fa-twitter text-xl"></i>
-                    </a>
-                    <a href="#" class="text-gray-300 hover:text-white transition">
-                        <i class="fab fa-instagram text-xl"></i>
-                    </a>
+        {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
+        <div class="max-w-7xl mx-auto px-4 py-10 space-y-6">
+            <div class="grid gap-6 md:grid-cols-3">
+                <div class="space-y-2">
+                    <p class="text-gray-300 font-semibold">
+                        © 2025 {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
+                    </p>
+                    <p class="text-gray-400 text-sm">Boutique en ligne légale et enregistrée.</p>
+                    <p class="text-gray-400 text-sm flex items-center gap-2">
+                        <i class="fas fa-envelope text-purple-200"></i>
+                        <span>{{ contact_email }}</span>
+                    </p>
+                    <p class="text-gray-400 text-sm flex items-center gap-2">
+                        <i class="fas fa-phone-alt text-purple-200"></i>
+                        <span>{{ shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' }}</span>
+                    </p>
+                </div>
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-white">Navigation</h3>
+                    <div class="flex flex-col space-y-2 text-gray-300 text-sm">
+                        <a href="{{ url_for('products') }}" class="hover:text-white transition">Produits</a>
+                        <a href="{{ url_for('about') }}" class="hover:text-white transition">À propos</a>
+                        <a href="{{ url_for('client_categories') }}" class="hover:text-white transition">Catégories</a>
+                        <a href="{{ url_for('cart') }}" class="hover:text-white transition">Panier</a>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-white">Légal & confiance</h3>
+                    <div class="flex flex-col space-y-2 text-gray-300 text-sm">
+                        <a href="{{ url_for('terms') }}" class="hover:text-white transition">Conditions Générales</a>
+                        <a href="{{ url_for('returns_policy') }}" class="hover:text-white transition">Retours & remboursements</a>
+                        <a href="{{ url_for('privacy_policy') }}" class="hover:text-white transition">Politique de confidentialité</a>
+                    </div>
+                    <div class="flex space-x-4 pt-2 text-gray-300">
+                        <a href="#" class="hover:text-white transition">
+                            <i class="fab fa-facebook text-xl"></i>
+                        </a>
+                        <a href="#" class="hover:text-white transition">
+                            <i class="fab fa-twitter text-xl"></i>
+                        </a>
+                        <a href="#" class="hover:text-white transition">
+                            <i class="fab fa-instagram text-xl"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </footer>
+
+    {% set raw_wa_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' %}
+    {% set wa_phone = raw_wa_phone|replace(' ', '')|replace('+', '') %}
+    <a href="https://wa.me/{{ wa_phone }}" class="whatsapp-btn whatsapp-pulse" target="_blank" rel="noopener" aria-label="Ouvrir WhatsApp">
+        <i class="fab fa-whatsapp text-2xl"></i>
+        <span class="hidden sm:inline">WhatsApp</span>
+    </a>
 
     <!-- JavaScript -->
     <script>

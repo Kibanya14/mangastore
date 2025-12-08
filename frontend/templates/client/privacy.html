@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Confidentialité - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <div class="flex items-start gap-3">
+            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+                <i class="fas fa-shield-alt text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Politique de confidentialité</h1>
+                <p class="text-gray-600">Protection de vos données personnelles sur {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-gray-700 leading-relaxed">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Données collectées</h2>
+                <p>Nous collectons les informations nécessaires à votre commande : identité, coordonnées, adresses de livraison, préférences de paiement et historiques de commandes.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Utilisation</h2>
+                <p>Les données servent à traiter vos commandes, assurer le suivi, améliorer l’expérience client et, si vous l’acceptez, envoyer des offres pertinentes. Aucun spam.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Partage</h2>
+                <p>Les informations peuvent être partagées avec nos prestataires techniques (paiement, livraison, hébergement) uniquement pour exécuter le service. Aucun partage ou revente à des tiers non autorisés.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Sécurité</h2>
+                <p>Nous appliquons des mesures de protection (chiffrement, accès restreints, journaux) et limitons l’accès aux seules personnes habilitées.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Durée de conservation</h2>
+                <p>Les données sont conservées pour la durée légale liée à la facturation et à la relation client, puis archivées ou anonymisées lorsque possible.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Vos droits</h2>
+                <p>Vous pouvez demander l’accès, la rectification ou la suppression de vos données, ainsi que limiter ou vous opposer à certains traitements.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Contact</h2>
+                <p>Pour toute demande liée aux données : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

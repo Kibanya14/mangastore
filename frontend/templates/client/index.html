@@ -20,6 +20,70 @@
     </div>
 </section>
 
+<!-- Produits Phares -->
+{% set featured_products = products[:4] if products else [] %}
+{% if featured_products %}
+<section class="py-10 bg-gray-900 text-white">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-bold">Nos produits phares</h2>
+            <a href="{{ url_for('products') }}" class="text-purple-200 hover:text-white font-semibold flex items-center space-x-2">
+                <span>Voir la boutique</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {% for product in featured_products %}
+            <div class="bg-white text-gray-900 rounded-xl shadow-md overflow-hidden border border-gray-200 hover-scale">
+                <div class="h-44 bg-gray-100 relative flex items-center justify-center overflow-hidden">
+                    {% set img = get_first_image_url(product) %}
+                    {% if img %}
+                    <img src="{{ img }}" alt="{{ product.name }}" class="w-full h-full object-contain p-2">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-purple-100">
+                        <i class="fas fa-book text-purple-400 text-4xl"></i>
+                    </div>
+                    {% endif %}
+                    <span class="absolute top-3 left-3 bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Populaire</span>
+                </div>
+                <div class="p-4 space-y-3">
+                    <h3 class="font-semibold text-lg text-gray-800">{{ product.name }}</h3>
+                    <p class="text-sm text-gray-600">{{ product.description[:90] }}{% if product.description and product.description|length > 90 %}...{% endif %}</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-bold text-purple-600">{{ convert_price(product.price, from_currency=base_currency) }}</span>
+                            {% if product.compare_price %}
+                            <span class="text-sm text-gray-400 line-through">{{ convert_price(product.compare_price, from_currency=base_currency) }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            Stock: {{ product.quantity }}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="flex-1 text-center border border-purple-200 text-purple-700 py-2 px-4 rounded-lg hover:bg-purple-50 transition text-sm font-semibold">
+                            Détails
+                        </a>
+                        {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="flex-1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
+                                Panier
+                            </button>
+                        </form>
+                        {% else %}
+                        <button disabled class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm">Indispo</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Catégories -->
 <section class="py-8 bg-white">
     <div class="max-w-7xl mx-auto px-4">

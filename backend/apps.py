@@ -997,6 +997,18 @@ def create_app():
     @app.route('/about')
     def about():
         return render_template('client/about.html')
+
+    @app.route('/conditions-generales')
+    def terms():
+        return render_template('client/terms.html')
+
+    @app.route('/retours-remboursements')
+    def returns_policy():
+        return render_template('client/returns.html')
+
+    @app.route('/confidentialite')
+    def privacy_policy():
+        return render_template('client/privacy.html')
     
     @app.route('/')
     def index():

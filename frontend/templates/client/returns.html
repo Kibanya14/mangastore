@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Retours & Remboursements - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <div class="flex items-start gap-3">
+            <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700">
+                <i class="fas fa-rotate-left text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Politique de retour et remboursement</h1>
+                <p class="text-gray-600">Nous facilitons les retours quand un produit ne correspond pas à vos attentes.</p>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-gray-700 leading-relaxed">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Délai de signalement</h2>
+                <p>Merci de signaler tout problème dans un délai raisonnable après réception (défaut, produit manquant, erreur de référence).</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">État des produits</h2>
+                <p>Les articles doivent être retournés intacts, complets et dans leur emballage d’origine. Les produits scellés ne doivent pas avoir été ouverts, sauf constat de défaut.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Procédure</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Contactez-nous via {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou WhatsApp.</li>
+                    <li>Indiquez votre numéro de commande, des photos claires du produit et l’anomalie constatée.</li>
+                    <li>Nous validons la prise en charge et organisons la récupération ou l’échange selon votre zone.</li>
+                </ul>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Remboursement</h2>
+                <p>Une fois le produit reçu et contrôlé, le remboursement est effectué sur le moyen de paiement initial ou sous forme d’avoir, selon votre choix.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Cas exclus</h2>
+                <p>Produits utilisés ou détériorés, articles personnalisés ou téléchargements ne sont pas éligibles sauf défaut avéré. Les retards liés au transport ou à des événements de force majeure ne donnent pas lieu à remboursement des frais de livraison.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Support</h2>
+                <p>Nous restons joignables pour clarifier chaque situation. Objectif : un traitement rapide et transparent de votre demande.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

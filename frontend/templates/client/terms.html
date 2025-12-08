@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Conditions Générales - {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+        <div class="flex items-start gap-3">
+            <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                <i class="fas fa-file-contract text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Conditions Générales de Vente</h1>
+                <p class="text-gray-600">Applicables à la boutique {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-gray-700 leading-relaxed">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">1. Objet</h2>
+                <p>Les présentes conditions régissent les ventes en ligne réalisées via la boutique {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">2. Produits et disponibilité</h2>
+                <p>Les descriptifs et prix sont indiqués pour chaque article. Les stocks sont affichés en temps réel ; en cas d’indisponibilité exceptionnelle, nous vous contactons pour proposer un échange ou un remboursement.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">3. Commande et validation</h2>
+                <p>La validation d’une commande vaut acceptation des présentes conditions. Vous recevez une confirmation par email ou SMS avec le récapitulatif et le numéro de suivi.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">4. Prix et paiement</h2>
+                <p>Les prix sont affichés en devise locale ou USD selon votre choix. Les moyens de paiement disponibles sont indiqués au moment du checkout. Aucun paiement n’est exigé en dehors des canaux validés par la boutique.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">5. Livraison</h2>
+                <p>Livraison à Kinshasa et autres zones disponibles dans la section Livraison. Les frais sont affichés avant validation. Les délais peuvent varier selon l’adresse et le transporteur.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">6. Retours et remboursements</h2>
+                <p>Vous disposez d’un délai raisonnable après réception pour signaler un retour (voir politique dédiée). Les produits doivent être intacts, complets et dans leur emballage d’origine.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">7. Service client</h2>
+                <p>Pour toute question : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}. Nous répondons dans les meilleurs délais.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">8. Propriété intellectuelle</h2>
+                <p>Les contenus, marques et visuels de la boutique restent la propriété de leurs détenteurs et ne peuvent être reproduits sans autorisation.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">9. Responsabilité</h2>
+                <p>{{ shop_settings.shop_name if shop_settings else 'Manga Store' }} s’engage à la conformité des produits livrés. Notre responsabilité ne saurait être engagée en cas d’usage non conforme ou de force majeure.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">10. Données personnelles</h2>
+                <p>Les données sont traitées conformément à notre politique de confidentialité. Vous pouvez demander l’accès, la rectification ou la suppression de vos informations.</p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">11. Droit applicable</h2>
+                <p>Les présentes sont soumises au droit congolais. En cas de litige, une solution amiable sera recherchée avant toute action.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
