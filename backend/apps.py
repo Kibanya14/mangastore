@@ -2519,6 +2519,9 @@ def create_app():
                 settings.shop_email = request.form.get('shop_email')
                 settings.shop_phone = request.form.get('shop_phone')
                 settings.shop_address = request.form.get('shop_address')
+                settings.facebook_url = request.form.get('facebook_url')
+                settings.whatsapp_number = request.form.get('whatsapp_number')
+                settings.whatsapp_group_url = request.form.get('whatsapp_group_url')
                 settings.currency = new_currency
                 settings.tax_rate = float(request.form.get('tax_rate', 0))
                 settings.shipping_cost = shipping_cost_input

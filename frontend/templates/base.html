@@ -270,8 +270,12 @@
     <!-- Footer -->
     <footer class="bg-gray-800 text-white mt-16">
         {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
+        {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' %}
+        {% set contact_address = shop_settings.shop_address if shop_settings and shop_settings.shop_address else 'Kinshasa, RDC' %}
+        {% set facebook_url = shop_settings.facebook_url if shop_settings and shop_settings.facebook_url else None %}
+        {% set whatsapp_group_url = shop_settings.whatsapp_group_url if shop_settings and shop_settings.whatsapp_group_url else None %}
         <div class="max-w-7xl mx-auto px-4 py-10 space-y-6">
-            <div class="grid gap-6 md:grid-cols-3">
+            <div class="grid gap-6 md:grid-cols-4">
                 <div class="space-y-2">
                     <p class="text-gray-300 font-semibold">
                         © 2025 {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}
@@ -283,7 +287,11 @@
                     </p>
                     <p class="text-gray-400 text-sm flex items-center gap-2">
                         <i class="fas fa-phone-alt text-purple-200"></i>
-                        <span>{{ shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' }}</span>
+                        <span>{{ contact_phone }}</span>
+                    </p>
+                    <p class="text-gray-400 text-sm flex items-start gap-2">
+                        <i class="fas fa-map-marker-alt text-purple-200 mt-0.5"></i>
+                        <span>{{ contact_address }}</span>
                     </p>
                 </div>
                 <div class="space-y-3">
@@ -296,29 +304,37 @@
                     </div>
                 </div>
                 <div class="space-y-3">
+                    <h3 class="font-semibold text-white">Contact & communauté</h3>
+                    <div class="flex flex-col space-y-2 text-gray-300 text-sm">
+                        {% if facebook_url %}
+                        <a href="{{ facebook_url }}" target="_blank" rel="noopener" class="hover:text-white transition flex items-center gap-2">
+                            <i class="fab fa-facebook text-xl"></i><span>Page Facebook</span>
+                        </a>
+                        {% endif %}
+                        <a href="https://wa.me/{{ contact_phone|replace(' ', '')|replace('+', '') }}" target="_blank" rel="noopener" class="hover:text-white transition flex items-center gap-2">
+                            <i class="fab fa-whatsapp text-xl"></i><span>Contact WhatsApp</span>
+                        </a>
+                        {% if whatsapp_group_url %}
+                        <a href="{{ whatsapp_group_url }}" target="_blank" rel="noopener" class="hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-users text-lg"></i><span>Groupe WhatsApp</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="space-y-3">
                     <h3 class="font-semibold text-white">Légal & confiance</h3>
                     <div class="flex flex-col space-y-2 text-gray-300 text-sm">
                         <a href="{{ url_for('terms') }}" class="hover:text-white transition">Conditions Générales</a>
                         <a href="{{ url_for('returns_policy') }}" class="hover:text-white transition">Retours & remboursements</a>
                         <a href="{{ url_for('privacy_policy') }}" class="hover:text-white transition">Politique de confidentialité</a>
                     </div>
-                    <div class="flex space-x-4 pt-2 text-gray-300">
-                        <a href="#" class="hover:text-white transition">
-                            <i class="fab fa-facebook text-xl"></i>
-                        </a>
-                        <a href="#" class="hover:text-white transition">
-                            <i class="fab fa-twitter text-xl"></i>
-                        </a>
-                        <a href="#" class="hover:text-white transition">
-                            <i class="fab fa-instagram text-xl"></i>
-                        </a>
-                    </div>
+                    <p class="text-gray-400 text-sm pt-2">Propulsé par Esperdigi. Tous droits réservés.</p>
                 </div>
             </div>
         </div>
     </footer>
 
-    {% set raw_wa_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' %}
+    {% set raw_wa_phone = (shop_settings.whatsapp_number if shop_settings and shop_settings.whatsapp_number else (shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000')) %}
     {% set wa_phone = raw_wa_phone|replace(' ', '')|replace('+', '') %}
     <a href="https://wa.me/{{ wa_phone }}" class="whatsapp-btn whatsapp-pulse" target="_blank" rel="noopener" aria-label="Ouvrir WhatsApp">
         <i class="fab fa-whatsapp text-2xl"></i>
