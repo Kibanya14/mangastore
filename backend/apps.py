@@ -354,7 +354,8 @@ def create_app():
         return mapping.get(status, status)
 
     def generate_order_number():
-        return f"CMD-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+        # Longueur max en base: 20 caractères. Exemple: "CMD-251208-A1B2C3" (17 chars).
+        return f"CMD-{datetime.now().strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
     
     def _html_wrapper(title: str, body_text: str) -> str:
         """Construit un gabarit HTML homogène pour les emails."""
@@ -830,7 +831,17 @@ def create_app():
         pending_orders_count = 0
         try:
             if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
-                pending_orders_count = Order.query.filter_by(status='pending').count()
+                last_seen_str = session.get('pending_seen_at')
+                last_seen = None
+                if last_seen_str:
+                    try:
+                        last_seen = datetime.fromisoformat(last_seen_str)
+                    except Exception:
+                        last_seen = None
+                q = Order.query.filter_by(status='pending')
+                if last_seen:
+                    q = q.filter(Order.created_at > last_seen)
+                pending_orders_count = q.count()
         except Exception:
             pending_orders_count = 0
 
@@ -2189,6 +2200,10 @@ def create_app():
         if status:
             query = query.filter_by(status=status)
         orders = query.order_by(Order.created_at.desc()).all()
+        try:
+            session['pending_seen_at'] = datetime.utcnow().isoformat()
+        except Exception:
+            pass
         return render_template('admin/orders.html', orders=orders)
 
     @app.route('/admin/clients')
@@ -2305,6 +2320,10 @@ def create_app():
                 'label': order.shipping_geocoded or order.shipping_address,
                 'link': f"https://www.google.com/maps?q={order.shipping_latitude},{order.shipping_longitude}"
             }
+        try:
+            session['pending_seen_at'] = datetime.utcnow().isoformat()
+        except Exception:
+            pass
         return render_template('admin/order_detail.html', order=order, map_data=map_data, deliverers=deliverers, assignments=assignments)
     
     @app.route('/admin/order/<int:order_id>/assign', methods=['POST'])

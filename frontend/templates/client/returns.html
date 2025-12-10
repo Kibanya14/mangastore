@@ -4,45 +4,91 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
+    {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243 836 704 467' %}
     <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <div class="flex items-start gap-3">
             <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700">
                 <i class="fas fa-rotate-left text-xl"></i>
             </div>
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Politique de retour et remboursement</h1>
-                <p class="text-gray-600">Nous facilitons les retours quand un produit ne correspond pas à vos attentes.</p>
+                <h1 class="text-3xl font-bold text-gray-900">Politique de retour, échange & remboursement</h1>
+                <p class="text-gray-600">Procédure claire pour résoudre toute anomalie rapidement.</p>
             </div>
         </div>
 
-        <div class="space-y-4 text-gray-700 leading-relaxed">
+        <div class="space-y-5 text-gray-700 leading-relaxed">
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Délai de signalement</h2>
-                <p>Merci de signaler tout problème dans un délai raisonnable après réception (défaut, produit manquant, erreur de référence).</p>
+                <h2 class="text-lg font-semibold text-gray-800">Article 1 – Principe général</h2>
+                <p>Nous garantissons la conformité de nos produits et traitons toute anomalie dans les meilleurs délais. Politique applicable à toutes les commandes passées sur notre site ou canaux officiels.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">État des produits</h2>
-                <p>Les articles doivent être retournés intacts, complets et dans leur emballage d’origine. Les produits scellés ne doivent pas avoir été ouverts, sauf constat de défaut.</p>
-            </div>
-            <div>
-                <h2 class="text-lg font-semibold text-gray-800">Procédure</h2>
+                <h2 class="text-lg font-semibold text-gray-800">Article 2 – Délais de réclamation</h2>
                 <ul class="list-disc ml-5 space-y-1">
-                    <li>Contactez-nous via {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou WhatsApp.</li>
-                    <li>Indiquez votre numéro de commande, des photos claires du produit et l’anomalie constatée.</li>
-                    <li>Nous validons la prise en charge et organisons la récupération ou l’échange selon votre zone.</li>
+                    <li>Produit défectueux/endommagé ou erreur de référence : 48h après réception.</li>
+                    <li>Article manquant dans le colis : 7 jours après réception.</li>
+                    <li>Retour sans défaut (produit non ouvert) : 14 jours calendaires après réception.</li>
+                </ul>
+                <p class="text-sm text-red-600 mt-2">Au-delà de ces délais, le retour ou remboursement ne pourra plus être pris en charge.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Article 3 – Conditions d’acceptation</h2>
+                <p>Produit non utilisé, non ouvert, non installé, en parfait état, dans l’emballage d’origine avec accessoires/notice, et présenté avec la facture ou le bon de livraison.</p>
+                <p class="font-semibold text-gray-800 mt-2">Cas particuliers :</p>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Compléments alimentaires : flacons scellés, non consommés ; retour accepté uniquement en cas de défaut ou erreur d’envoi.</li>
+                    <li>Électronique & accessoires : non utilisés, non activés, tous câbles/notices/boîtes présents.</li>
+                    <li>Produits numériques/codes/téléchargements : non remboursables une fois délivrés.</li>
                 </ul>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Remboursement</h2>
-                <p>Une fois le produit reçu et contrôlé, le remboursement est effectué sur le moyen de paiement initial ou sous forme d’avoir, selon votre choix.</p>
+                <h2 class="text-lg font-semibold text-gray-800">Article 4 – Procédure obligatoire</h2>
+                <ol class="list-decimal ml-5 space-y-1">
+                    <li><strong>Notification</strong> : contactez-nous (WhatsApp ou email) avec n° de commande, photos/vidéo et description précise.</li>
+                    <li><strong>Autorisation</strong> : nous émettons un numéro de retour (RMA) sous 24h. Aucun retour sans RMA.</li>
+                    <li><strong>Organisation</strong> : 
+                        <ul class="list-disc ml-5 space-y-1">
+                            <li>Kinshasa : récupération possible, gratuite si défaut ou erreur de notre part.</li>
+                            <li>Autres villes : instructions d’envoi + preuve d’expédition obligatoire.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Vérification</strong> : contrôle sous 48h après réception.</li>
+                </ol>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Cas exclus</h2>
-                <p>Produits utilisés ou détériorés, articles personnalisés ou téléchargements ne sont pas éligibles sauf défaut avéré. Les retards liés au transport ou à des événements de force majeure ne donnent pas lieu à remboursement des frais de livraison.</p>
+                <h2 class="text-lg font-semibold text-gray-800">Article 5 – Modalités de remboursement</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Délai : 7 à 14 jours ouvrables après validation.</li>
+                    <li>Méthode : identique au paiement initial.</li>
+                    <li>Montant : prix du produit, frais de livraison remboursés si notre responsabilité est engagée.</li>
+                    <li>Avoir client : possible sur demande, valable 12 mois.</li>
+                </ul>
+                <p class="text-sm text-gray-700 mt-2">Cas particuliers : produit partiellement endommagé par le client = remboursement proportionnel. Retour sans RMA = retenue de 15 % pour frais administratifs.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Support</h2>
-                <p>Nous restons joignables pour clarifier chaque situation. Objectif : un traitement rapide et transparent de votre demande.</p>
+                <h2 class="text-lg font-semibold text-gray-800">Article 6 – Cas exclus</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Produits ouverts ou utilisés (sauf défaut avéré à réception)</li>
+                    <li>Détérioration due à une mauvaise utilisation</li>
+                    <li>Absence d’emballage d’origine ou accessoires manquants</li>
+                    <li>Produits personnalisés, numériques ou déjà téléchargés</li>
+                    <li>Réclamation hors délai ou retour sans RMA</li>
+                    <li>Situations de force majeure (grèves, catastrophes, instabilité, pandémies, pénuries d’énergie, etc.)</li>
+                </ul>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Article 7 – Contact & support</h2>
+                <p>Nous répondons sous 24h ouvrées.</p>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>WhatsApp : {{ contact_phone }}</li>
+                    <li>Email : {{ contact_email }}</li>
+                </ul>
             </div>
         </div>
     </div>

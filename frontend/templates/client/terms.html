@@ -4,61 +4,128 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    {% set shop_name = shop_settings.shop_name if shop_settings else 'Manga Store Rdc SARLU' %}
+    {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243 836 704 467' %}
+    {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
     <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <div class="flex items-start gap-3">
             <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
                 <i class="fas fa-file-contract text-xl"></i>
             </div>
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Conditions Générales de Vente</h1>
-                <p class="text-gray-600">Applicables à la boutique {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+                <h1 class="text-3xl font-bold text-gray-900">Conditions Générales de Vente (CGV)</h1>
+                <p class="text-gray-600">Applicables à la boutique en ligne {{ shop_name }}.</p>
             </div>
         </div>
 
-        <div class="space-y-4 text-gray-700 leading-relaxed">
+        <div class="space-y-5 text-gray-700 leading-relaxed">
             <div>
                 <h2 class="text-lg font-semibold text-gray-800">1. Objet</h2>
-                <p>Les présentes conditions régissent les ventes en ligne réalisées via la boutique {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+                <p>Les présentes CGV régissent l’ensemble des ventes de produits réalisées via la boutique {{ shop_name }}. Elles définissent les droits et obligations de l’entreprise et du client pour tout achat en ligne.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">2. Produits et disponibilité</h2>
-                <p>Les descriptifs et prix sont indiqués pour chaque article. Les stocks sont affichés en temps réel ; en cas d’indisponibilité exceptionnelle, nous vous contactons pour proposer un échange ou un remboursement.</p>
+                <h2 class="text-lg font-semibold text-gray-800">2. Identité du vendeur</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>{{ shop_name }} — entreprise enregistrée en RDC</li>
+                    <li>Adresse : 92 Avenue Bulungu, Commune de Makala, Kinshasa</li>
+                    <li>Téléphone : {{ contact_phone }}</li>
+                    <li>Email : {{ contact_email }}</li>
+                </ul>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">3. Commande et validation</h2>
-                <p>La validation d’une commande vaut acceptation des présentes conditions. Vous recevez une confirmation par email ou SMS avec le récapitulatif et le numéro de suivi.</p>
+                <h2 class="text-lg font-semibold text-gray-800">3. Produits proposés</h2>
+                <p class="font-semibold text-gray-800">3.1 Compléments alimentaires</p>
+                <p>Conformes aux normes d’importation. Ne remplacent pas un avis médical. L’acheteur s’engage à être majeur, lire et respecter les instructions, et consulter un professionnel en cas de doute, maladie, grossesse, allaitement ou prise de médicaments.</p>
+                <p class="font-semibold text-gray-800 mt-3">3.2 Produits électroniques et accessoires</p>
+                <p>Inclut téléphones reconditionnés, accessoires, casques, trackers, gadgets. Chaque fiche précise état (neuf/reconditionné, grade A/B), accessoires, spécifications, compatibilité, éventuelle garantie.</p>
+                <p class="font-semibold text-gray-800 mt-3">3.3 Appareils auditifs et produits sensibles</p>
+                <p>Livrés avec notice technique. Pour des raisons d’hygiène, retour possible uniquement s’ils n’ont jamais été utilisés.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">4. Prix et paiement</h2>
-                <p>Les prix sont affichés en devise locale ou USD selon votre choix. Les moyens de paiement disponibles sont indiqués au moment du checkout. Aucun paiement n’est exigé en dehors des canaux validés par la boutique.</p>
+                <h2 class="text-lg font-semibold text-gray-800">4. Disponibilité</h2>
+                <p>Offres valables dans la limite des stocks. En cas d’indisponibilité après commande : proposition d’équivalent, d’échange ou remboursement intégral.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">5. Livraison</h2>
-                <p>Livraison à Kinshasa et autres zones disponibles dans la section Livraison. Les frais sont affichés avant validation. Les délais peuvent varier selon l’adresse et le transporteur.</p>
+                <h2 class="text-lg font-semibold text-gray-800">5. Commandes</h2>
+                <p>La validation d’une commande implique l’acceptation des CGV, la confirmation des coordonnées (adresse et numéro WhatsApp) et l’acceptation du prix et de la livraison. {{ shop_name }} peut refuser une commande frauduleuse ou incomplète.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">6. Retours et remboursements</h2>
-                <p>Vous disposez d’un délai raisonnable après réception pour signaler un retour (voir politique dédiée). Les produits doivent être intacts, complets et dans leur emballage d’origine.</p>
+                <h2 class="text-lg font-semibold text-gray-800">6. Prix</h2>
+                <p>Affichage en CDF ou USD selon votre choix. Les prix peuvent évoluer (taux de change, promotions, import). Les frais de livraison sont indiqués avant validation.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">7. Service client</h2>
-                <p>Pour toute question : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}. Nous répondons dans les meilleurs délais.</p>
+                <h2 class="text-lg font-semibold text-gray-800">7. Paiement</h2>
+                <p>Modes acceptés : Mobile Money (M-Pesa, Airtel Money, Orange Money), espèces à la livraison (zones couvertes), autres moyens indiqués au checkout. Aucun paiement en dehors des canaux officiels.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">8. Propriété intellectuelle</h2>
-                <p>Les contenus, marques et visuels de la boutique restent la propriété de leurs détenteurs et ne peuvent être reproduits sans autorisation.</p>
+                <h2 class="text-lg font-semibold text-gray-800">8. Livraison</h2>
+                <p class="font-semibold text-gray-800">8.1 Zones desservies</p>
+                <p class="text-sm text-gray-600">Livraison active : Kinshasa (toutes communes), Lubumbashi, Kolwezi. — Livraison sur confirmation / en pause : Goma, Bukavu, Kisangani, Matadi, Boma, Mbandaka, Kikwit, Bandundu-ville, Beni et autres localités via partenaires.</p>
+                <p class="font-semibold text-gray-800 mt-3">8.2 Délais indicatifs</p>
+                <ul class="list-disc ml-5 space-y-1 text-sm text-gray-700">
+                    <li>Kinshasa : 1 à 48h</li>
+                    <li>Lubumbashi : 1 à 48h</li>
+                    <li>Kolwezi : 1 à 72h selon zone</li>
+                    <li>Autres villes : 2 à 5 jours ouvrables selon transporteur</li>
+                </ul>
+                <p class="font-semibold text-gray-800 mt-3">8.3 Vérification du colis</p>
+                <p>Le client doit vérifier le colis en présence du livreur et signaler immédiatement toute anomalie (photo/vidéo recommandé). À défaut, le colis est réputé accepté sans réserve.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">9. Responsabilité</h2>
-                <p>{{ shop_settings.shop_name if shop_settings else 'Manga Store' }} s’engage à la conformité des produits livrés. Notre responsabilité ne saurait être engagée en cas d’usage non conforme ou de force majeure.</p>
+                <h2 class="text-lg font-semibold text-gray-800">9. Retours et remboursements</h2>
+                <p class="font-semibold text-gray-800">9.1 Compléments alimentaires</p>
+                <p>Retour accepté seulement si neuf, scellé, non ouvert, emballage d’origine.</p>
+                <p class="font-semibold text-gray-800 mt-3">9.2 Produits électroniques</p>
+                <p>Retour possible sous 48h si non utilisé, complet, en parfait état. Non repris : produit cassé, mouillé, oxydé, rooté, modifié.</p>
+                <p class="font-semibold text-gray-800 mt-3">9.3 Appareils auditifs</p>
+                <p>Retour uniquement si neuf et jamais utilisé.</p>
+                <p class="font-semibold text-gray-800 mt-3">9.4 Modalités de remboursement</p>
+                <p>Si validé : remboursement via Mobile Money, échange ou avoir.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">10. Données personnelles</h2>
-                <p>Les données sont traitées conformément à notre politique de confidentialité. Vous pouvez demander l’accès, la rectification ou la suppression de vos informations.</p>
+                <h2 class="text-lg font-semibold text-gray-800">10. Garanties</h2>
+                <p class="font-semibold text-gray-800">10.1 Compléments alimentaires</p>
+                <p>Garantie d’authenticité et de conformité. Pas de garantie d’efficacité médicale.</p>
+                <p class="font-semibold text-gray-800 mt-3">10.2 Produits électroniques</p>
+                <p>Garanties variables selon produit. Exclusions : chute, choc, fissure, oxydation, surtension, modification logicielle ou matérielle.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">11. Droit applicable</h2>
-                <p>Les présentes sont soumises au droit congolais. En cas de litige, une solution amiable sera recherchée avant toute action.</p>
+                <h2 class="text-lg font-semibold text-gray-800">11. Limitation de responsabilité</h2>
+                <p>{{ shop_name }} ne peut être tenue responsable en cas d’usage non conforme, d’incompatibilité non vérifiée par l’acheteur, d’effets indésirables liés aux compléments, de dommages après réception, ou de retards dus à des événements externes (grèves, douanes, restrictions, force majeure).</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">12. Données personnelles</h2>
+                <p>Données utilisées pour gérer commande, livraison, communication. Jamais revendues. Droit de modification/suppression sur demande.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">13. Propriété intellectuelle</h2>
+                <p>Marques, logos, textes et contenus du site sont protégés. Toute reproduction sans autorisation est interdite.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">14. Service client</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>WhatsApp : +243 836 704 467</li>
+                    <li>Email : {{ contact_email }}</li>
+                    <li>Disponibilité : 8h00 – 22h00, 7j/7</li>
+                </ul>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">15. Droit applicable</h2>
+                <p>Les CGV sont régies par le droit congolais. Une résolution amiable est privilégiée avant toute procédure.</p>
             </div>
         </div>
     </div>

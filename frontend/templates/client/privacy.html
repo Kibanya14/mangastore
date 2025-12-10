@@ -4,6 +4,9 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
+    {% set shop_name = shop_settings.shop_name if shop_settings else 'Manga Store RDC SARLU' %}
+    {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
+    {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243 836 704 467' %}
     <div class="bg-white rounded-xl shadow p-6 space-y-4">
         <div class="flex items-start gap-3">
             <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
@@ -11,38 +14,83 @@
             </div>
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Politique de confidentialité</h1>
-                <p class="text-gray-600">Protection de vos données personnelles sur {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}.</p>
+                <p class="text-gray-600">Protection de vos données personnelles chez {{ shop_name }}.</p>
             </div>
         </div>
 
-        <div class="space-y-4 text-gray-700 leading-relaxed">
+        <div class="space-y-5 text-gray-700 leading-relaxed">
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Données collectées</h2>
-                <p>Nous collectons les informations nécessaires à votre commande : identité, coordonnées, adresses de livraison, préférences de paiement et historiques de commandes.</p>
+                <h2 class="text-lg font-semibold text-gray-800">1. Responsable du traitement</h2>
+                <p>{{ shop_name }} — RCCM : CD/KNG/RCCM/25-B-03041 — ID Nat : 01-H5300-N80544B — NIF : A2549826M.</p>
+                <p>Adresse : 92 Avenue Bulungu, Commune de Makala, Kinshasa – RDC.</p>
+                <p>Nous protégeons vos données conformément aux exigences légales applicables en RDC et aux bonnes pratiques internationales.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Utilisation</h2>
-                <p>Les données servent à traiter vos commandes, assurer le suivi, améliorer l’expérience client et, si vous l’acceptez, envoyer des offres pertinentes. Aucun spam.</p>
+                <h2 class="text-lg font-semibold text-gray-800">2. Données collectées</h2>
+                <p>Données nécessaires au service : nom, email, téléphone, adresse de livraison, informations de commande et historique, données de paiement (jamais stockées en clair), données techniques (cookies, IP, session).</p>
+                <p class="mt-2 font-semibold text-gray-800">Base légale</p>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Exécution d’un contrat : traitement et livraison de la commande.</li>
+                    <li>Intérêt légitime : sécurité du site, prévention de la fraude, amélioration du service.</li>
+                    <li>Consentement : offres marketing ou promotionnelles.</li>
+                </ul>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Partage</h2>
-                <p>Les informations peuvent être partagées avec nos prestataires techniques (paiement, livraison, hébergement) uniquement pour exécuter le service. Aucun partage ou revente à des tiers non autorisés.</p>
+                <h2 class="text-lg font-semibold text-gray-800">3. Finalités de traitement</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Traiter, expédier et suivre vos commandes</li>
+                    <li>Gérer votre compte client</li>
+                    <li>Améliorer l’expérience utilisateur et la sécurité</li>
+                    <li>Personnaliser les communications (avec votre consentement)</li>
+                    <li>Prévenir les activités frauduleuses</li>
+                </ul>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Sécurité</h2>
-                <p>Nous appliquons des mesures de protection (chiffrement, accès restreints, journaux) et limitons l’accès aux seules personnes habilitées.</p>
+                <h2 class="text-lg font-semibold text-gray-800">4. Partage des données</h2>
+                <p>Pas de vente ni location de données. Partage uniquement avec : prestataires de paiement, transporteurs/livreurs, hébergeurs et services techniques, outils d’emailing et assistance client.</p>
+                <p class="mt-2">Certains prestataires peuvent être situés hors RDC : des garanties contractuelles assurent un niveau de protection adéquat.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Durée de conservation</h2>
-                <p>Les données sont conservées pour la durée légale liée à la facturation et à la relation client, puis archivées ou anonymisées lorsque possible.</p>
+                <h2 class="text-lg font-semibold text-gray-800">5. Sécurité des données</h2>
+                <p>Chiffrement des données sensibles, accès restreint aux personnes autorisées, journalisation et contrôles de sécurité, hébergement protégé.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Vos droits</h2>
-                <p>Vous pouvez demander l’accès, la rectification ou la suppression de vos données, ainsi que limiter ou vous opposer à certains traitements.</p>
+                <h2 class="text-lg font-semibold text-gray-800">6. Durée de conservation</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Données de facturation : jusqu’à 10 ans (obligations légales congolaises).</li>
+                    <li>Données de compte : tant que le compte est actif.</li>
+                    <li>Données marketing : jusqu’au retrait du consentement.</li>
+                </ul>
+                <p>Au-delà, anonymisation, archivage ou suppression lorsque possible.</p>
             </div>
+
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Contact</h2>
-                <p>Pour toute demande liée aux données : {{ shop_settings.shop_email if shop_settings else 'contact@mangastore.com' }} ou {{ shop_settings.shop_phone if shop_settings else '+243000000000' }}.</p>
+                <h2 class="text-lg font-semibold text-gray-800">7. Vos droits</h2>
+                <p>Accès, rectification, suppression (hors obligations légales), limitation ou opposition à certains traitements, retrait du consentement marketing.</p>
+                <p class="text-sm text-gray-600 mt-1">Engagement de réponse dans un délai raisonnable, au plus tard 30 jours.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">8. Cookies</h2>
+                <p>Utilisés pour le fonctionnement du site/panier, la mesure d’audience, la sécurité. Gestion possible via votre navigateur.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">9. Mise à jour</h2>
+                <p>La politique peut évoluer pour respecter la loi, tenir compte de nouveaux services ou renforcer la transparence. En cas de changement important, information par email ou notification visible.</p>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">10. Contact</h2>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Email : {{ contact_email }}</li>
+                    <li>Téléphone / WhatsApp : {{ contact_phone }}</li>
+                </ul>
             </div>
         </div>
     </div>
