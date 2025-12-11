@@ -5,63 +5,61 @@
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-12 space-y-6">
     {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
-    {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243 836 704 467' %}
-    {% set shop_name = shop_settings.shop_name if shop_settings else 'Manga Store RDC' %}
-
     <div class="flex items-start gap-3">
         <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
             <i class="fas fa-circle-info text-xl"></i>
         </div>
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">À propos de {{ shop_name }}</h1>
-            <p class="text-gray-600">Boutique en ligne légale, fiable, basée à Kinshasa.</p>
+            <h1 class="text-3xl font-bold text-gray-900">À propos de {{ shop_settings.shop_name if shop_settings else 'Manga Store' }}</h1>
+            <p class="text-gray-600">Boutique en ligne légale et enregistrée à Kinshasa. Fiabilité, suivi transparent et support réactif.</p>
         </div>
     </div>
 
     <div class="bg-white rounded-xl shadow p-6 space-y-5">
         <div class="space-y-2">
-            <h2 class="text-xl font-semibold text-gray-800">Qui sommes-nous ?</h2>
+            <h2 class="text-xl font-semibold text-gray-800">Identité & direction</h2>
             <p class="text-gray-700 leading-relaxed">
-                {{ shop_name }} est une boutique en ligne déclarée et enregistrée en RDC. Nous sélectionnons avec soin compléments alimentaires, produits de santé, équipements électroniques et articles essentiels du quotidien. Le nom “Manga” évoque à la fois la mangue (mangá en lingala) et l’identité de notre promoteur.
+                {{ shop_settings.shop_name if shop_settings else 'Manga Store' }} opère sous la direction de <strong>M. Maniana Ngayo</strong> pour <strong>Manga STORE RDC SARLU</strong>. Notre activité est déclarée et facturée conformément à la réglementation locale.
             </p>
-        </div>
-
-        <div class="space-y-2">
-            <h3 class="font-semibold text-gray-800">Historique de la création</h3>
-            <p class="text-gray-700 leading-relaxed">
-                {{ shop_name }} est né pour offrir aux consommateurs congolais un accès simple, fiable et rapide à des produits essentiels, dans un marché où disponibilité, transparence et qualité ne sont pas toujours garanties. Objectifs : moderniser l’expérience d’achat, assurer la disponibilité, proposer un support réactif et sécuriser les achats en ligne.
-            </p>
-        </div>
-
-        <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-            <h3 class="font-semibold text-gray-800">Identité légale</h3>
-            <ul class="text-sm text-gray-700 space-y-1">
-                <li><strong>Raison sociale :</strong> Manga Store RDC SARLU</li>
-                <li><strong>RCCM :</strong> CD/KNG/RCCM/25-B-03041</li>
-                <li><strong>NIF :</strong> A2549826M</li>
-                <li><strong>ID Nat :</strong> 01-H5300-N80544B</li>
-                <li><strong>Siège :</strong> 92 Avenue Bulungu, Commune de Makala, Kinshasa – RDC</li>
-            </ul>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-                <h3 class="font-semibold text-gray-800">Nos engagements & services premium</h3>
+                <h3 class="font-semibold text-gray-800">Responsables & contacts</h3>
                 <ul class="text-sm text-gray-700 space-y-1">
-                    <li>🟩 Paiements sécurisés : Mobile Money, virement, paiement à la livraison</li>
-                    <li>🟩 Livraison rapide : &lt;24h Kinshasa/Lubumbashi/Kolwezi ; 1-3 jours Goma/Bukavu/Kisangani/Matadi/Boma ; 3-7 jours autres villes</li>
-                    <li>🟩 Support client dédié : WhatsApp, email, téléphone</li>
-                    <li>🟩 Politique de retour claire et équitable</li>
-                    <li>🟩 Traçabilité complète de la commande à la livraison</li>
-                    <li>🟩 Protection stricte des données clients</li>
+                    <li><strong>Équipe de gestion :</strong> Manga STORE RDC SARLU (Direction : M. Maniana Ngayo)</li>
+                    <li><strong>Email :</strong> {{ contact_email }}</li>
+                    <li><strong>Téléphone :</strong> {{ shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' }}</li>
+                    <li><strong>Adresse :</strong> Kinshasa — détails complets disponibles sur facture ou sur demande.</li>
+                </ul>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Services premium</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>Catalogue multi-produits avec descriptifs clairs</li>
+                    <li>Suivi de commande et notifications en temps réel</li>
+                    <li>Livraison optimisée avec géolocalisation</li>
+                    <li>Support client réactif (WhatsApp, email, téléphone)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-white border border-purple-100 rounded-lg space-y-2">
+                <h3 class="font-semibold text-gray-800">Pourquoi nous faire confiance ?</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>Entreprise déclarée avec facturation officielle</li>
+                    <li>Transparence sur la disponibilité et les délais</li>
+                    <li>Paiements sécurisés et confirmations automatiques</li>
+                    <li>Traçabilité des commandes du panier à la livraison</li>
                 </ul>
             </div>
             <div class="p-4 bg-gray-50 rounded-lg space-y-2">
                 <h3 class="font-semibold text-gray-800">Mission, vision, valeurs</h3>
                 <ul class="text-sm text-gray-700 space-y-1">
-                    <li><strong>Mission :</strong> Offrir une expérience d’achat moderne, simple, transparente et sécurisée partout en RDC.</li>
-                    <li><strong>Vision :</strong> Devenir la référence e-commerce premium en RDC.</li>
-                    <li><strong>Valeurs :</strong> Qualité • Transparence • Sécurité • Proximité • Réactivité.</li>
+                    <li><strong>Mission :</strong> rendre l’achat en ligne fiable et simple en RDC.</li>
+                    <li><strong>Vision :</strong> devenir la référence e-commerce premium locale.</li>
+                    <li><strong>Valeurs :</strong> transparence, qualité, réactivité, proximité client.</li>
                 </ul>
             </div>
         </div>
@@ -69,34 +67,19 @@
         <div class="p-4 bg-white border border-purple-100 rounded-lg space-y-2">
             <h3 class="font-semibold text-gray-800">Conception et support technique</h3>
             <p class="text-sm text-gray-700">
-                La plateforme {{ shop_name }} a été conçue et intégrée par <strong>Esperdigi Technologie</strong>, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
+                La plateforme {{ shop_settings.shop_name if shop_settings else 'Manga Store' }} a été conçue et intégrée par <strong>Esperdigi Technologie</strong>, avec le développeur web-master <strong>KIBANYA MASAMBA Jonas Landry</strong>.
             </p>
             <p class="text-sm text-gray-600">
                 Esperdigi assure le développement, l’optimisation et le support évolutif de la boutique.
             </p>
         </div>
 
-        <div class="p-4 bg-white border border-gray-100 rounded-lg space-y-2">
-            <h3 class="font-semibold text-gray-800">Mentions légales</h3>
-            <ul class="text-sm text-gray-700 space-y-1">
-                <li><strong>Éditeur :</strong> Manga Store RDC SARLU, enregistrée en RDC</li>
-                <li><strong>RCCM :</strong> CD/KNG/RCCM/25-B-03041 — <strong>NIF :</strong> A2549826M — <strong>ID Nat :</strong> 01-H5300-N80544B</li>
-                <li><strong>Forme juridique :</strong> SARLU</li>
-                <li><strong>Siège social :</strong> 92 Avenue Bulungu, Commune de Makala, Ville de Kinshasa – RDC</li>
-                <li><strong>Directeur de publication :</strong> Direction générale Manga Store RDC SARLU</li>
-                <li><strong>Hébergement / maintenance :</strong> Esperdigi Technologie (gestion, développement, maintenance)</li>
-                <li><strong>Email :</strong> {{ contact_email }} — <strong>Téléphone / WhatsApp :</strong> {{ contact_phone }}</li>
-                <li>Protection des données : voir Politique de Confidentialité. Utilisation du site soumise aux CGV et Politique de Retour.</li>
-            </ul>
-        </div>
-
         <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-            <h3 class="font-semibold text-gray-800">Contact & support</h3>
+            <h3 class="font-semibold text-gray-800">Engagements légaux & confidentialité</h3>
             <ul class="text-sm text-gray-700 space-y-1">
-                <li><strong>Email :</strong> {{ contact_email }}</li>
-                <li><strong>Téléphone / WhatsApp :</strong> {{ contact_phone }}</li>
-                <li><strong>Disponibilité :</strong> Lundi–Samedi, 8h–18h</li>
-                <li><strong>Délai moyen de réponse :</strong> &lt; 2 heures sur WhatsApp</li>
+                <li>Politique de confidentialité et protection des données clients</li>
+                <li>Facturation conforme avec mentions légales sur les documents</li>
+                <li>Processus de retour clair et traçable</li>
             </ul>
         </div>
     </div>
@@ -106,7 +89,7 @@
             <p class="font-semibold text-gray-800">Besoin d’aide ou d’un devis ?</p>
             <p>Écrivez-nous à {{ contact_email }} ou sur WhatsApp. Réponse rapide garantie.</p>
         </div>
-        <a href="https://wa.me/{{ contact_phone|replace(' ', '')|replace('+', '') }}" target="_blank" rel="noopener" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-center">
+        <a href="https://wa.me/{{ (shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000')|replace(' ', '')|replace('+', '') }}" target="_blank" rel="noopener" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-center">
             Contacter le support
         </a>
     </div>

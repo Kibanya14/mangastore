@@ -1033,6 +1033,10 @@ def create_app():
     def about():
         return render_template('client/about.html')
 
+    @app.route('/mentions-legales')
+    def legal_notice():
+        return render_template('client/legal.html')
+
     @app.route('/conditions-generales')
     def terms():
         return render_template('client/terms.html')
