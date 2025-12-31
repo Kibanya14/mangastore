@@ -21,7 +21,7 @@ import json
 import secrets
 from werkzeug.utils import secure_filename
 from functools import wraps
-from sqlalchemy import or_
+from sqlalchemy import create_engine, or_, text
 from sqlalchemy.orm import joinedload
 import requests
 from threading import Timer
@@ -78,6 +78,33 @@ def create_app():
 
     # Max upload size
     app.config['MAX_CONTENT_LENGTH'] = app.config.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
+
+    def _ensure_db_connection():
+        """Vérifie rapidement la connexion DB et bascule sur SQLite locale si la DB distante est inaccessible."""
+        uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+        env_name = str(os.getenv('FLASK_ENV', 'development')).lower()
+        allow_fallback_env = os.getenv('ALLOW_SQLITE_FALLBACK')
+        allow_fallback = (allow_fallback_env is not None and str(allow_fallback_env).lower() in ('1', 'true', 'yes'))
+        # Par défaut, on autorise le fallback uniquement en dev pour éviter une DB locale fantôme en prod.
+        if allow_fallback_env is None:
+            allow_fallback = env_name != 'production'
+        if not allow_fallback or not uri or uri.startswith('sqlite:'):
+            return
+
+        fallback_uri = f"sqlite:///{os.path.join(project_root, 'database.db')}"
+        try:
+            engine = create_engine(uri, pool_pre_ping=True, connect_args={"connect_timeout": int(os.getenv('DB_CONNECT_TIMEOUT', '3'))})
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            engine.dispose()
+        except Exception as exc:  # pragma: no cover - dépend de l'environnement réseau
+            try:
+                app.logger.error(f"Connexion DB distante impossible ({uri}): {exc}. Bascule sur SQLite locale ({fallback_uri}).")
+            except Exception:
+                pass
+            app.config['SQLALCHEMY_DATABASE_URI'] = fallback_uri
+    
+    _ensure_db_connection()
     
     # Initialisation des extensions
     db.init_app(app)
@@ -1108,8 +1135,24 @@ def create_app():
     
     @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
     def add_to_cart(product_id):
+        wants_json = ('application/json' in (request.headers.get('Accept') or '').lower() or
+                      request.headers.get('X-Requested-With') in ('XMLHttpRequest', 'fetch'))
+        redirect_target = request.referrer or url_for('products')
+
+        def _respond(ok: bool, message: str, status: int = 200):
+            if wants_json:
+                return jsonify({
+                    'ok': ok,
+                    'message': message,
+                    'cart_count': session.get('cart_count', 0)
+                }), status
+            flash(message, 'success' if ok else 'error')
+            return redirect(redirect_target)
+
         # Empêcher les admins/livreurs d'ajouter au panier
         if current_user.is_authenticated and (getattr(current_user, 'is_admin', False) or getattr(current_user, 'is_deliverer', False)):
+            if wants_json:
+                return _respond(False, 'Cette fonctionnalité est réservée aux clients', 403)
             flash('Cette fonctionnalité est réservée aux clients', 'error')
             return redirect(url_for('admin_dashboard') if getattr(current_user, 'is_admin', False) else url_for('index'))
 
@@ -1120,43 +1163,43 @@ def create_app():
             quantity = 1
         
         if quantity <= 0:
-            flash('Quantité invalide', 'error')
-            return redirect(request.referrer or url_for('products'))
+            return _respond(False, 'Quantité invalide')
             
         if product.quantity < quantity:
-            flash('Stock insuffisant', 'error')
-            return redirect(request.referrer or url_for('products'))
+            return _respond(False, 'Stock insuffisant')
 
-        if current_user.is_authenticated:
-            cart = get_cart_for_user(current_user.id)
-            # Vérifier si le produit est déjà dans le panier
-            cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product_id).first()
-            if cart_item:
-                new_quantity = cart_item.quantity + quantity
-                if new_quantity > product.quantity:
-                    flash('Quantité demandée dépasse le stock disponible', 'error')
-                    return redirect(request.referrer or url_for('products'))
-                cart_item.quantity = new_quantity
+        try:
+            if current_user.is_authenticated:
+                cart = get_cart_for_user(current_user.id)
+                # Vérifier si le produit est déjà dans le panier
+                cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product_id).first()
+                if cart_item:
+                    new_quantity = cart_item.quantity + quantity
+                    if new_quantity > product.quantity:
+                        return _respond(False, 'Quantité demandée dépasse le stock disponible')
+                    cart_item.quantity = new_quantity
+                else:
+                    cart_item = CartItem(cart_id=cart.id, product_id=product_id, quantity=quantity)
+                    db.session.add(cart_item)
+                db.session.commit()
             else:
-                cart_item = CartItem(cart_id=cart.id, product_id=product_id, quantity=quantity)
-                db.session.add(cart_item)
-            db.session.commit()
-        else:
-            guest_cart = get_guest_cart()
-            existing = next((i for i in guest_cart if i.get('product_id') == product_id), None)
-            if existing:
-                new_quantity = existing.get('quantity', 1) + quantity
-                if new_quantity > product.quantity:
-                    flash('Quantité demandée dépasse le stock disponible', 'error')
-                    return redirect(request.referrer or url_for('products'))
-                existing['quantity'] = new_quantity
-            else:
-                guest_cart.append({'product_id': product_id, 'quantity': quantity})
-            set_guest_cart(guest_cart)
-        
-        sync_cart_count()
-        flash(f'{product.name} ajouté au panier ({quantity})', 'success')
-        return redirect(request.referrer or url_for('products'))
+                guest_cart = get_guest_cart()
+                existing = next((i for i in guest_cart if i.get('product_id') == product_id), None)
+                if existing:
+                    new_quantity = existing.get('quantity', 1) + quantity
+                    if new_quantity > product.quantity:
+                        return _respond(False, 'Quantité demandée dépasse le stock disponible')
+                    existing['quantity'] = new_quantity
+                else:
+                    guest_cart.append({'product_id': product_id, 'quantity': quantity})
+                set_guest_cart(guest_cart)
+            
+            sync_cart_count()
+            return _respond(True, f'{product.name} ajouté au panier ({quantity})')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erreur ajout panier: {e}")
+            return _respond(False, "Impossible d'ajouter au panier, veuillez réessayer.", 500)
     
     @app.route('/cart')
     def cart():

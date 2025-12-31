@@ -65,7 +65,7 @@
                             Détails
                         </a>
                         {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
-                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="flex-1">
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="flex-1" data-add-to-cart data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="quantity" value="1">
                             <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
@@ -181,7 +181,7 @@
                         </a>
 
                         {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
-                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2">
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-2" data-add-to-cart data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="flex items-center space-x-2">
                                 <input type="number" name="quantity" value="1" min="1" max="{{ product.quantity }}" 

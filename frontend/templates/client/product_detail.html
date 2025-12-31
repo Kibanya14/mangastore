@@ -31,7 +31,7 @@
             <p class="text-gray-700 leading-relaxed">{{ product.description or 'Pas de description disponible pour ce produit.' }}</p>
 
             {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
-            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-3">
+            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-3" data-add-to-cart data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label class="block text-sm font-medium text-gray-700">Quantité</label>
                 <div class="flex items-center gap-3">
