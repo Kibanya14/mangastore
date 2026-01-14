@@ -31,9 +31,6 @@
                     <p class="text-gray-600 text-sm mt-1">{{ item.product.description[:100] }}...</p>
                     <div class="flex items-center justify-between mt-2">
                         <span class="text-xl font-bold text-purple-600">{{ convert_price(item.product.price, from_currency=base_currency) }}</span>
-                        <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            Stock: {{ item.product.quantity }}
-                        </span>
                     </div>
                 </div>
 
@@ -144,7 +141,7 @@
         input.addEventListener('change', function() {
             if (this.value > parseInt(this.getAttribute('max'))) {
                 this.value = this.getAttribute('max');
-                alert('Quantité maximale disponible: ' + this.getAttribute('max'));
+                alert('Quantité maximale disponible atteinte.');
             }
         });
     });

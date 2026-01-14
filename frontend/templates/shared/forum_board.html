@@ -1,179 +1,473 @@
-<div class="max-w-6xl mx-auto space-y-4 px-3 sm:px-4">
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <!-- Chat area -->
-        <div class="lg:col-span-3 bg-white rounded-2xl shadow-md border border-gray-200 flex flex-col h-[70vh] sm:h-[75vh] min-h-[420px]">
-            <div id="chat-window" class="flex-1 overflow-y-auto px-3 sm:px-4 py-3 space-y-3">
-                {% for msg in messages|reverse %}
-                {% set avatar = None %}
-                {% set sender_name = 'Utilisateur' %}
-                {% set is_me = False %}
-                {% if msg.deliverer and msg.deliverer.profile_picture %}{% set avatar = msg.deliverer.profile_picture if msg.deliverer.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.deliverer.profile_picture) %}{% endif %}
-                {% if msg.requester and msg.requester.profile_picture %}{% set avatar = msg.requester.profile_picture if msg.requester.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.requester.profile_picture) %}{% endif %}
-                {% if msg.deliverer %}{% set sender_name = msg.deliverer.first_name ~ ' ' ~ msg.deliverer.last_name %}{% endif %}
-                {% if msg.requester %}{% set sender_name = msg.requester.first_name ~ ' ' ~ msg.requester.last_name %}{% endif %}
-                {% if current_user.is_authenticated %}
-                    {% if msg.deliverer and current_user.is_deliverer and msg.deliverer.id == current_user.id %}
-                        {% set is_me = True %}
-                    {% elif msg.requester and not current_user.is_deliverer and msg.requester.id == current_user.id %}
-                        {% set is_me = True %}
-                    {% endif %}
-                {% endif %}
-                <div class="flex {{ 'justify-end' if is_me else 'justify-start' }}">
-                    <div class="max-w-xl w-full">
-                        <div class="flex items-start gap-2 {{ 'flex-row-reverse text-right' if is_me else '' }}">
-                            <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                {% if avatar %}
-                                <img src="{{ avatar }}" alt="avatar" class="h-full w-full object-cover">
-                                {% else %}
-                                <i class="fas fa-user text-gray-500"></i>
-                                {% endif %}
-                            </div>
-                            <div class="{{ 'items-end' if is_me else 'items-start' }} flex flex-col gap-1">
-                                <div class="flex items-center gap-2 {{ 'flex-row-reverse' if is_me else '' }}">
-                                    <span class="text-xs font-semibold text-gray-700">{{ sender_name }}</span>
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ 'bg-purple-100 text-purple-700' if is_me else 'bg-gray-100 text-gray-700' }} capitalize">{{ msg.role }}</span>
-                                </div>
-                                <div class="rounded-2xl px-4 py-3 border {{ 'bg-purple-50 border-purple-200' if is_me else 'bg-gray-50 border-gray-200' }}">
-                                    {% if msg.content %}
-                                    <p class="text-sm text-gray-800 whitespace-pre-line">{{ msg.content }}</p>
-                                    {% endif %}
-                                    {% if msg.attachment_path %}
-                                    <div class="mt-2 space-y-2">
-                                        {% set attach_url = msg.attachment_path if msg.attachment_path.startswith('http') else media_url(msg.attachment_path) %}
-                                        {% if msg.attachment_type == 'image' %}
-                                        <img src="{{ attach_url }}" alt="Pièce jointe" class="rounded-lg max-h-64 object-contain border">
-                                        {% elif msg.attachment_type == 'audio' %}
-                                        <div class="flex items-center gap-2 text-sm text-gray-700">
-                                            <i class="fas fa-microphone text-purple-600"></i>
-                                            <audio controls class="w-full">
-                                                <source src="{{ attach_url }}">
-                                            </audio>
-                                        </div>
-                                        {% elif msg.attachment_type == 'video' %}
-                                        <video controls class="rounded-lg w-full max-h-72">
-                                            <source src="{{ attach_url }}">
-                                        </video>
-                                        <p class="text-[11px] text-gray-500 flex items-center gap-1"><i class="fas fa-clock"></i>Vidéos conseillées ≤20s</p>
-                                        {% else %}
-                                        <a href="{{ attach_url }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-2">
-                                            <i class="fas fa-file"></i>Ouvrir le fichier
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="flex items-center gap-2 text-[10px] text-gray-500 mt-1">
-                                    <span>{{ msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '' }}</span>
-                                    {% if is_me %}
-                                    <button type="button" class="copy-btn flex items-center gap-1 hover:text-purple-600" data-copy="{{ (msg.content or '')|replace('\n',' ') }}">
-                                        <i class="fas fa-copy"></i> Copier
-                                    </button>
-                                    <button type="button" class="edit-toggle flex items-center gap-1 hover:text-blue-600" data-edit="edit-form-{{ msg.id }}">
-                                        <i class="fas fa-pen"></i> Modifier
-                                    </button>
-                                    <form action="{{ url_for('forum') }}" method="POST" onsubmit="return confirm('Supprimer ce message ?');" class="inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="message_id" value="{{ msg.id }}">
-                                        <button type="submit" class="flex items-center gap-1 hover:text-red-600">
-                                            <i class="fas fa-trash"></i> Supprimer
-                                        </button>
-                                    </form>
-                                    {% endif %}
-                                </div>
-                                {% if is_me %}
-                                <div id="edit-form-{{ msg.id }}" class="hidden mt-2">
-                                    <form action="{{ url_for('forum') }}" method="POST" class="space-y-2">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="action" value="edit">
-                                        <input type="hidden" name="message_id" value="{{ msg.id }}">
-                                        <textarea name="content" rows="2" class="w-full border rounded-lg px-2 py-1 focus:ring-2 focus:ring-purple-500">{{ msg.content }}</textarea>
-                                        <div class="flex justify-end gap-2 text-xs">
-                                            <button type="button" class="edit-toggle px-3 py-1 border rounded" data-edit="edit-form-{{ msg.id }}">Annuler</button>
-                                            <button type="submit" class="px-3 py-1 bg-purple-600 text-white rounded">Enregistrer</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                {% endif %}
-                            </div>
+<style>
+    .wa-shell {
+        background: #f0f2f5;
+        border-radius: 28px;
+        border: 1px solid #d9e0e4;
+        box-shadow: 0 28px 70px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+    }
+    .wa-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        min-height: 70vh;
+    }
+    .wa-chat {
+        display: flex;
+        flex-direction: column;
+        background: #efeae2;
+        min-height: 70vh;
+    }
+    .wa-chat-header {
+        background: #075e54;
+        color: #fff;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .wa-chat-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .wa-chat-title-icon {
+        height: 38px;
+        width: 38px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    .wa-chat-sub {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+    .wa-chat-badge {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .wa-chat-window {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px;
+        background: #efeae2;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+        background-size: 18px 18px;
+    }
+    .wa-message-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        align-items: flex-end;
+    }
+    .wa-message-row.is-me {
+        justify-content: flex-end;
+        flex-direction: row-reverse;
+    }
+    .wa-avatar {
+        height: 36px;
+        width: 36px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #d1d5db;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #475569;
+    }
+    .wa-message {
+        max-width: 560px;
+        width: 100%;
+    }
+    .wa-message-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: #52636b;
+        margin-bottom: 4px;
+    }
+    .wa-role {
+        background: rgba(0, 0, 0, 0.07);
+        color: #334155;
+        padding: 2px 8px;
+        border-radius: 999px;
+        text-transform: capitalize;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .wa-bubble {
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .wa-bubble.me { background: #d9fdd3; }
+    .wa-bubble::after {
+        content: "";
+        position: absolute;
+        top: 10px;
+        left: -6px;
+        width: 12px;
+        height: 12px;
+        background: inherit;
+        transform: rotate(45deg);
+        border-radius: 2px;
+    }
+    .wa-message-row.is-me .wa-bubble::after {
+        left: auto;
+        right: -6px;
+    }
+    .wa-text {
+        white-space: pre-line;
+        font-size: 14px;
+        color: #1f2937;
+    }
+    .wa-attachment { margin-top: 8px; }
+    .wa-attachment img,
+    .wa-attachment video {
+        border-radius: 12px;
+        max-height: 240px;
+        width: 100%;
+        object-fit: contain;
+    }
+    .wa-time {
+        display: block;
+        text-align: right;
+        margin-top: 6px;
+        font-size: 10px;
+        color: #64748b;
+    }
+    .wa-actions {
+        margin-top: 4px;
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+        color: #64748b;
+    }
+    .wa-actions button { display: flex; align-items: center; gap: 4px; }
+    .wa-edit { margin-top: 6px; }
+    .wa-edit textarea {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid #d1d5db;
+        padding: 8px 10px;
+    }
+    .wa-edit .wa-edit-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .wa-composer {
+        background: #f0f2f5;
+        padding: 12px 14px;
+        border-top: 1px solid #d9e0e4;
+    }
+    .wa-input-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .wa-icon-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .wa-icon-btn:hover { background: #f8fafc; color: #0f766e; }
+    .wa-icon-btn.is-recording {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #16a34a;
+    }
+    .wa-textarea {
+        flex: 1;
+        min-width: 200px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        background: #fff;
+    }
+    .wa-send-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 999px;
+        background: #128c7e;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 20px rgba(18, 140, 126, 0.35);
+        border: none;
+    }
+    .wa-emoji-picker {
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-width: 520px;
+    }
+    .wa-emoji-picker button {
+        font-size: 20px;
+        padding: 6px;
+        border-radius: 10px;
+    }
+    .wa-hints {
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+        color: #64748b;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+    .wa-sidebar {
+        background: #fff;
+        border-left: 1px solid #d9e0e4;
+        padding: 16px;
+        overflow-y: auto;
+    }
+    .wa-sidebar-header {
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .wa-user {
+        width: 100%;
+        text-align: left;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 10px;
+        border-radius: 16px;
+        transition: background 0.2s ease;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+    }
+    .wa-user:hover { background: #f1f5f9; }
+    .wa-user-name { font-weight: 600; color: #0f172a; }
+    .wa-user-status {
+        font-size: 11px;
+        color: #16a34a;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .wa-user-actions {
+        font-size: 11px;
+        color: #64748b;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        margin-top: 4px;
+    }
+    .wa-user:hover .wa-user-actions { opacity: 1; }
+
+    @media (max-width: 1024px) {
+        .wa-grid { grid-template-columns: 1fr; }
+        .wa-sidebar { display: none; }
+    }
+</style>
+
+<div class="max-w-6xl mx-auto px-3 sm:px-4">
+    {% set online_count = online_users|length if online_users else 0 %}
+    <div class="wa-shell">
+        <div class="wa-grid">
+            <section class="wa-chat">
+                <header class="wa-chat-header">
+                    <div class="wa-chat-title">
+                        <div class="wa-chat-title-icon"><i class="fas fa-comments"></i></div>
+                        <div>
+                            <div class="text-sm font-semibold">Forum communautaire</div>
+                            <div class="wa-chat-sub">{{ online_count }} en ligne</div>
                         </div>
                     </div>
-                </div>
-                {% else %}
-                <p class="text-sm text-gray-500">Aucun message pour l’instant. Lancez la discussion !</p>
-                {% endfor %}
-            </div>
+                    <span class="wa-chat-badge">WhatsApp style</span>
+                </header>
 
-            <!-- Composer -->
-            <form action="{{ url_for('forum') }}" method="POST" enctype="multipart/form-data" class="p-3 border-t border-gray-200 space-y-2" id="chat-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <label class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-purple-50" title="Joindre un média (image/gif/audio/vidéo)">
-                        <i class="fas fa-plus text-gray-600"></i>
-                        <input type="file" name="attachment" id="attachment-input" accept="image/*,audio/*,video/*" class="hidden">
-                    </label>
-                    <button type="button" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-purple-50 text-amber-600" id="sticker-btn" title="Stickers / GIF">
-                        <i class="fas fa-icons"></i>
-                    </button>
-                    <button type="button" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-purple-50 text-yellow-600" id="emoji-btn" title="Emoji">
-                        <i class="fas fa-face-smile"></i>
-                    </button>
-                    <label class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-purple-50" id="record-btn" title="Enregistrer un vocal">
-                        <i class="fas fa-microphone text-purple-600"></i>
-                    </label>
-                    <textarea name="content" rows="2" class="flex-1 min-w-[180px] border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500" placeholder="Message..."></textarea>
-                    <button type="submit" class="w-12 h-12 rounded-full bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-                <div id="emoji-picker" class="hidden bg-white border border-gray-200 rounded-xl shadow p-2 flex flex-wrap gap-2 max-w-lg">
-                    {% set emojis = ['😀','😁','😂','🤣','😊','😍','😘','😎','😇','🤩','🤔','😢','😡','👍','🙏','👏','🔥','✨','🎉','🎯','❤️','🤝','🚀'] %}
-                    {% for e in emojis %}
-                    <button type="button" class="px-2 py-1 text-xl hover:bg-purple-50 rounded" data-emoji="{{ e }}">{{ e }}</button>
+                <div id="chat-window" class="wa-chat-window">
+                    {% for msg in messages|reverse %}
+                    {% set avatar = None %}
+                    {% set sender_name = 'Utilisateur' %}
+                    {% set is_me = False %}
+                    {% if msg.deliverer and msg.deliverer.profile_picture %}{% set avatar = msg.deliverer.profile_picture if msg.deliverer.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.deliverer.profile_picture) %}{% endif %}
+                    {% if msg.requester and msg.requester.profile_picture %}{% set avatar = msg.requester.profile_picture if msg.requester.profile_picture.startswith('http') else media_url('uploads/profiles/' + msg.requester.profile_picture) %}{% endif %}
+                    {% if msg.deliverer %}{% set sender_name = msg.deliverer.first_name ~ ' ' ~ msg.deliverer.last_name %}{% endif %}
+                    {% if msg.requester %}{% set sender_name = msg.requester.first_name ~ ' ' ~ msg.requester.last_name %}{% endif %}
+                    {% if current_user.is_authenticated %}
+                        {% if msg.deliverer and current_user.is_deliverer and msg.deliverer.id == current_user.id %}
+                            {% set is_me = True %}
+                        {% elif msg.requester and not current_user.is_deliverer and msg.requester.id == current_user.id %}
+                            {% set is_me = True %}
+                        {% endif %}
+                    {% endif %}
+                    <div class="wa-message-row {{ 'is-me' if is_me else '' }}">
+                        <div class="wa-avatar">
+                            {% if avatar %}
+                            <img src="{{ avatar }}" alt="avatar" class="h-full w-full object-cover">
+                            {% else %}
+                            <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="wa-message">
+                            <div class="wa-message-meta">
+                                <span class="font-semibold">{{ sender_name }}</span>
+                                <span class="wa-role">{{ msg.role }}</span>
+                            </div>
+                            <div class="wa-bubble {{ 'me' if is_me else 'them' }}">
+                                {% if msg.content %}
+                                <p class="wa-text">{{ msg.content }}</p>
+                                {% endif %}
+                                {% if msg.attachment_path %}
+                                <div class="wa-attachment">
+                                    {% set attach_url = msg.attachment_path if msg.attachment_path.startswith('http') else media_url(msg.attachment_path) %}
+                                    {% if msg.attachment_type == 'image' %}
+                                    <img src="{{ attach_url }}" alt="Piece jointe">
+                                    {% elif msg.attachment_type == 'audio' %}
+                                    <audio controls class="w-full">
+                                        <source src="{{ attach_url }}">
+                                    </audio>
+                                    {% elif msg.attachment_type == 'video' %}
+                                    <video controls>
+                                        <source src="{{ attach_url }}">
+                                    </video>
+                                    {% else %}
+                                    <a href="{{ attach_url }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-2">
+                                        <i class="fas fa-file"></i>Ouvrir le fichier
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                <span class="wa-time">{{ msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '' }}</span>
+                            </div>
+                            {% if is_me %}
+                            <div class="wa-actions">
+                                <button type="button" class="copy-btn" data-copy="{{ (msg.content or '')|replace('\n',' ') }}">
+                                    <i class="fas fa-copy"></i> Copier
+                                </button>
+                                <button type="button" class="edit-toggle" data-edit="edit-form-{{ msg.id }}">
+                                    <i class="fas fa-pen"></i> Modifier
+                                </button>
+                                <form action="{{ url_for('forum') }}" method="POST" onsubmit="return confirm('Supprimer ce message ?');" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="message_id" value="{{ msg.id }}">
+                                    <button type="submit" class="flex items-center gap-1">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                            <div id="edit-form-{{ msg.id }}" class="wa-edit hidden">
+                                <form action="{{ url_for('forum') }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="action" value="edit">
+                                    <input type="hidden" name="message_id" value="{{ msg.id }}">
+                                    <textarea name="content" rows="2">{{ msg.content }}</textarea>
+                                    <div class="wa-edit-actions">
+                                        <button type="button" class="edit-toggle px-3 py-1 border rounded" data-edit="edit-form-{{ msg.id }}">Annuler</button>
+                                        <button type="submit" class="px-3 py-1 bg-green-600 text-white rounded">Enregistrer</button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-500">Aucun message pour l’instant. Lancez la discussion !</p>
                     {% endfor %}
                 </div>
-                <div class="flex items-center gap-3 text-[11px] text-gray-500">
-                    <span class="flex items-center gap-1"><i class="fas fa-music"></i>Vocal ≤5 min</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-photo-film"></i>Images / GIF / Vidéos</span>
-                    <span id="record-status" class="text-purple-600 hidden flex items-center gap-1"><i class="fas fa-circle-notch fa-spin"></i>Enregistrement...</span>
-                </div>
-            </form>
-        </div>
 
-        <!-- Online users -->
-        <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 space-y-4 h-[70vh] sm:h-[75vh] min-h-[240px] overflow-y-auto">
-            <div class="flex items-center gap-2 text-gray-800 font-semibold">
-                <i class="fas fa-signal text-green-600"></i>
-                <span>Utilisateurs en ligne</span>
-            </div>
-            <div class="space-y-3">
-                {% for u in online_users %}
-                <button type="button" class="w-full text-left flex items-center gap-3 group" data-call-name="{{ u.name }}" data-call-id="{{ u.user_id }}" {% if u.is_me %}data-self="1"{% endif %}>
-                    <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                        {% if u.avatar %}
-                        <img src="{{ u.avatar }}" alt="{{ u.name }}" class="h-full w-full object-cover">
-                        {% else %}
-                        <i class="fas fa-user text-gray-500"></i>
-                        {% endif %}
+                <form action="{{ url_for('forum') }}" method="POST" enctype="multipart/form-data" class="wa-composer" id="chat-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="wa-input-row">
+                        <label class="wa-icon-btn" title="Joindre un media (image/gif/audio/video)">
+                            <i class="fas fa-plus"></i>
+                            <input type="file" name="attachment" id="attachment-input" accept="image/*,audio/*,video/*" class="hidden">
+                        </label>
+                        <button type="button" class="wa-icon-btn" id="sticker-btn" title="Stickers / GIF">
+                            <i class="fas fa-icons"></i>
+                        </button>
+                        <button type="button" class="wa-icon-btn" id="emoji-btn" title="Emoji">
+                            <i class="fas fa-face-smile"></i>
+                        </button>
+                        <label class="wa-icon-btn" id="record-btn" title="Enregistrer un vocal">
+                            <i class="fas fa-microphone"></i>
+                        </label>
+                        <textarea name="content" rows="1" class="wa-textarea" placeholder="Message..."></textarea>
+                        <button type="submit" class="wa-send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-medium text-gray-800 group-hover:text-purple-700">
-                                {{ u.name }}{% if u.is_me %} (vous-même){% endif %}
-                            </span>
-                            <span class="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 capitalize">{{ u.role }}</span>
-                        </div>
-                        <p class="text-xs text-green-600 flex items-center gap-1"><i class="fas fa-circle text-[8px]"></i>{{ u.status }}</p>
-                        <div class="mt-1 flex items-center gap-2 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition {% if u.is_me %}hidden{% endif %}">
-                            <span class="flex items-center gap-1"><i class="fas fa-phone text-green-600"></i>Appel</span>
-                            <span class="flex items-center gap-1"><i class="fas fa-video text-blue-600"></i>Video</span>
-                        </div>
+                    <div id="emoji-picker" class="wa-emoji-picker hidden">
+                        {% set emojis = ['😀','😁','😂','🤣','😊','😍','😘','😎','😇','🤩','🤔','😢','😡','👍','🙏','👏','🔥','✨','🎉','🎯','❤️','🤝','🚀'] %}
+                        {% for e in emojis %}
+                        <button type="button" data-emoji="{{ e }}">{{ e }}</button>
+                        {% endfor %}
                     </div>
-                </button>
-                {% else %}
-                <p class="text-sm text-gray-500">Aucun utilisateur visible pour l'instant.</p>
-                {% endfor %}
-            </div>
+                    <div class="wa-hints">
+                        <span class="flex items-center gap-1"><i class="fas fa-music"></i>Vocal ≤5 min</span>
+                        <span class="flex items-center gap-1"><i class="fas fa-photo-film"></i>Images / GIF / Videos</span>
+                        <span id="record-status" class="text-emerald-600 hidden flex items-center gap-1"><i class="fas fa-circle-notch fa-spin"></i>Enregistrement...</span>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="wa-sidebar">
+                <div class="wa-sidebar-header">
+                    <i class="fas fa-signal text-green-600"></i>
+                    <span>Utilisateurs en ligne</span>
+                </div>
+                <div class="space-y-2">
+                    {% for u in online_users %}
+                    <button type="button" class="wa-user" data-call-name="{{ u.name }}" data-call-id="{{ u.user_id }}" {% if u.is_me %}data-self="1"{% endif %}>
+                        <div class="wa-avatar">
+                            {% if u.avatar %}
+                            <img src="{{ u.avatar }}" alt="{{ u.name }}" class="h-full w-full object-cover">
+                            {% else %}
+                            <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1">
+                            <div class="wa-user-name">
+                                {{ u.name }}{% if u.is_me %} (vous-meme){% endif %}
+                            </div>
+                            <div class="text-xs text-gray-500 capitalize">{{ u.role }}</div>
+                            <div class="wa-user-status"><i class="fas fa-circle text-[8px]"></i>{{ u.status }}</div>
+                            <div class="wa-user-actions {% if u.is_me %}hidden{% endif %}">
+                                <span class="flex items-center gap-1"><i class="fas fa-phone text-green-600"></i>Appel</span>
+                                <span class="flex items-center gap-1"><i class="fas fa-video text-blue-600"></i>Video</span>
+                            </div>
+                        </div>
+                    </button>
+                    {% else %}
+                    <p class="text-sm text-gray-500">Aucun utilisateur visible pour l'instant.</p>
+                    {% endfor %}
+                </div>
+            </aside>
         </div>
     </div>
 </div>
@@ -182,7 +476,7 @@
 <div id="call-overlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-4 space-y-3">
         <div class="flex items-center gap-3">
-            <div class="h-12 w-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+            <div class="h-12 w-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
                 <i class="fas fa-phone-volume"></i>
             </div>
             <div>
@@ -225,8 +519,7 @@
     function setRecording(isRecording){
         if (!statusEl || !recordBtn) return;
         statusEl.classList.toggle('hidden', !isRecording);
-        recordBtn.classList.toggle('bg-purple-100', isRecording);
-        recordBtn.classList.toggle('border-purple-300', isRecording);
+        recordBtn.classList.toggle('is-recording', isRecording);
     }
 
     async function startRecording(){
@@ -274,7 +567,7 @@
         });
     }
 
-    // Sticker/GIF: déclencher le picker de fichier (même input)
+    // Sticker/GIF: declencher le picker de fichier (meme input)
     if (stickerBtn && attachInput) {
         stickerBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -290,7 +583,7 @@
         });
         emojiPicker.querySelectorAll('[data-emoji]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const textarea = document.querySelector('#chat-form textarea[name=\"content\"]');
+                const textarea = document.querySelector('#chat-form textarea[name="content"]');
                 if (!textarea) return;
                 const emoji = btn.getAttribute('data-emoji');
                 const start = textarea.selectionStart || textarea.value.length;
@@ -307,7 +600,7 @@
         btn.addEventListener('click', () => {
             const text = btn.getAttribute('data-copy') || '';
             navigator.clipboard.writeText(text).then(() => {
-                alert('Message copié dans le presse-papiers.');
+                alert('Message copie dans le presse-papiers.');
             }).catch(() => {
                 alert('Impossible de copier ce message.');
             });
@@ -422,9 +715,9 @@
     }
 
     if (socket) {
-        socket.on('connect', () => console.log('SocketIO connecté'));
+        socket.on('connect', () => console.log('SocketIO connecte'));
         socket.on('presence:update', (data) => {
-            console.log('Présence', data);
+            console.log('Presence', data);
         });
         socket.on('call:ring', (payload) => {
             currentTarget = payload.from;
@@ -432,7 +725,7 @@
             showOverlay('Entrant', payload.from_name || 'Utilisateur');
         });
         socket.on('call:busy', () => {
-            alert("L'utilisateur est occupé.");
+            alert("L'utilisateur est occupe.");
             hideOverlay();
         });
         socket.on('call:ready', () => {
@@ -440,7 +733,7 @@
             showOverlay('En cours', currentTarget);
         });
         socket.on('call:rejected', () => {
-            alert('Appel rejeté.');
+            alert('Appel rejete.');
             hideOverlay();
         });
         socket.on('call:offer', async (data) => {
@@ -479,7 +772,7 @@
         btn.addEventListener('click', () => {
             const name = btn.getAttribute('data-call-name');
             const target = btn.getAttribute('data-call-id');
-            const choice = confirm(`Appeler ${name} ?\nOK: appel vocal\nAnnuler: appel vidéo`);
+            const choice = confirm(`Appeler ${name} ?\nOK: appel vocal\nAnnuler: appel video`);
             callUser(target, !choice);
         });
     });

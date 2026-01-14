@@ -11,14 +11,119 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="{{ media_url('uploads/logos/' + (shop_settings.shop_logo if shop_settings and shop_settings.shop_logo else 'default_logo.svg')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
     <style>
-        :root { --bg:#f9fafb; --text:#111827; --card:#ffffff; }
-        .dark { --bg:#0f172a; --text:#e5e7eb; --card:#111827; }
-        body { background: var(--bg); color: var(--text); }
+        :root {
+            --brand-25: #f2fdf6;
+            --brand-50: #ecfdf3;
+            --brand-100: #d1fae5;
+            --brand-200: #a7f3d0;
+            --brand-300: #6ee7b7;
+            --brand-400: #34d399;
+            --brand-500: #10b981;
+            --brand-600: #059669;
+            --brand-700: #047857;
+            --brand-800: #065f46;
+            --ink: #0f172a;
+            --muted: #4b5563;
+            --surface: #ffffff;
+            --app-bg: #f3faf6;
+            --app-outline: rgba(15, 23, 42, 0.08);
+            --app-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
+        }
+        .dark {
+            --app-bg: #0b1220;
+            --surface: #0f172a;
+            --ink: #e5e7eb;
+            --muted: #94a3b8;
+        }
+        body {
+            background: radial-gradient(1200px 600px at 10% -10%, #d1fae5 0%, transparent 60%),
+                        radial-gradient(800px 400px at 100% 0%, #bbf7d0 0%, transparent 55%),
+                        var(--app-bg);
+            color: var(--ink);
+            font-family: "Sora", "Segoe UI", sans-serif;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle at 20% 20%, rgba(5, 150, 105, 0.08), transparent 40%),
+                              radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.08), transparent 45%),
+                              radial-gradient(circle at 50% 90%, rgba(5, 150, 105, 0.05), transparent 40%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        h1, h2, h3, .app-title { font-family: "Syne", "Sora", sans-serif; }
+        .app-frame {
+            max-width: 1280px;
+            margin: 18px auto 48px;
+            background: var(--surface);
+            border-radius: 28px;
+            box-shadow: var(--app-shadow);
+            border: 1px solid var(--app-outline);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 32px);
+            position: relative;
+            z-index: 1;
+        }
+        @media (max-width: 1024px) {
+            .app-frame {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+        }
+        .app-main { padding-bottom: 96px; }
+        @media (min-width: 768px) { .app-main { padding-bottom: 0; } }
+        .app-nav {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--app-outline);
+        }
+        .app-hero {
+            background: linear-gradient(130deg, #065f46 0%, #059669 50%, #10b981 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .app-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(500px 220px at 15% 20%, rgba(255, 255, 255, 0.25), transparent 55%),
+                        radial-gradient(600px 260px at 90% 0%, rgba(255, 255, 255, 0.18), transparent 55%);
+            pointer-events: none;
+        }
+        .app-hero-card {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+        }
+        .app-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.18);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(130deg, #065f46 0%, #059669 60%, #10b981 100%);
         }
         .hover-scale {
             transition: transform 0.3s ease;
@@ -39,6 +144,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
         }
         .whatsapp-btn {
             position: fixed;
@@ -59,6 +165,9 @@
             background: #1ebe5d;
             transform: translateY(-1px);
         }
+        @media (max-width: 768px) {
+            .whatsapp-btn { bottom: 96px; }
+        }
         .whatsapp-pulse {
             animation: pulse 1.8s ease-in-out infinite;
         }
@@ -76,11 +185,82 @@
             border-radius: 999px;
             margin-left: 6px;
         }
+        .app-bottom-nav {
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid var(--app-outline);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+            border-radius: 999px;
+            padding: 10px 14px;
+            display: flex;
+            gap: 12px;
+            z-index: 70;
+            backdrop-filter: blur(10px);
+        }
+        .app-bottom-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 14px;
+            transition: all 0.2s ease;
+        }
+        .app-bottom-item i { font-size: 16px; }
+        .app-bottom-item.active,
+        .app-bottom-item:hover {
+            background: var(--brand-50);
+            color: var(--brand-700);
+        }
+        @keyframes appFade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .app-fade { animation: appFade 0.7s ease both; }
+        .app-stagger > * {
+            animation: appFade 0.7s ease both;
+            animation-delay: calc(var(--i, 0) * 80ms);
+        }
+
+        .text-purple-800 { color: var(--brand-800) !important; }
+        .text-purple-700 { color: var(--brand-700) !important; }
+        .text-purple-600 { color: var(--brand-600) !important; }
+        .text-purple-500 { color: var(--brand-500) !important; }
+        .text-purple-400 { color: var(--brand-400) !important; }
+        .text-purple-300 { color: var(--brand-300) !important; }
+        .text-purple-200 { color: var(--brand-200) !important; }
+        .bg-purple-800 { background-color: var(--brand-800) !important; }
+        .bg-purple-700 { background-color: var(--brand-700) !important; }
+        .bg-purple-600 { background-color: var(--brand-600) !important; }
+        .bg-purple-500 { background-color: var(--brand-500) !important; }
+        .bg-purple-300 { background-color: var(--brand-300) !important; }
+        .bg-purple-200 { background-color: var(--brand-200) !important; }
+        .bg-purple-100 { background-color: var(--brand-100) !important; }
+        .bg-purple-50 { background-color: var(--brand-50) !important; }
+        .bg-purple-25 { background-color: var(--brand-25) !important; }
+        .border-purple-500 { border-color: var(--brand-500) !important; }
+        .border-purple-300 { border-color: var(--brand-300) !important; }
+        .border-purple-200 { border-color: var(--brand-200) !important; }
+        .border-purple-100 { border-color: var(--brand-100) !important; }
+        .ring-purple-500 { --tw-ring-color: var(--brand-500) !important; }
+        .ring-purple-100 { --tw-ring-color: var(--brand-100) !important; }
+        .focus\:ring-purple-500:focus { --tw-ring-color: var(--brand-500) !important; }
+        .hover\:bg-purple-700:hover { background-color: var(--brand-700) !important; }
+        .hover\:bg-purple-50:hover { background-color: var(--brand-50) !important; }
+        .hover\:text-purple-600:hover { color: var(--brand-600) !important; }
+        .hover\:text-purple-700:hover { color: var(--brand-700) !important; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col {% if session.get('theme') == 'dark' %}dark{% endif %}">
+<body class="min-h-screen {% if session.get('theme') == 'dark' %}dark{% endif %}">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg sticky top-0 z-50">
+    <div class="app-frame">
+    <nav class="app-nav sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 {% set cart_count = (cart_items_count if cart_items_count is not none else session.get('cart_count', 0)) | int %}
@@ -274,7 +454,7 @@
     </nav>
 
     <!-- Contenu Principal -->
-    <main class="flex-1">
+    <main class="flex-1 app-main">
         {% block content %}{% endblock %}
     </main>
 
@@ -346,12 +526,48 @@
         </div>
     </footer>
 
+    </div>
+
     {% set raw_wa_phone = (shop_settings.whatsapp_number if shop_settings and shop_settings.whatsapp_number else (shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000')) %}
     {% set wa_phone = raw_wa_phone|replace(' ', '')|replace('+', '') %}
     <a href="https://wa.me/{{ wa_phone }}" class="whatsapp-btn whatsapp-pulse" target="_blank" rel="noopener" aria-label="Ouvrir WhatsApp">
         <i class="fab fa-whatsapp text-2xl"></i>
         <span class="hidden sm:inline">WhatsApp</span>
     </a>
+
+    <nav class="app-bottom-nav md:hidden" aria-label="Navigation principale">
+        <a href="{{ url_for('index') }}" class="app-bottom-item {% if request.endpoint == 'index' %}active{% endif %}">
+            <i class="fas fa-house"></i>
+            Accueil
+        </a>
+        <a href="{{ url_for('products') }}" class="app-bottom-item {% if request.endpoint == 'products' %}active{% endif %}">
+            <i class="fas fa-store"></i>
+            Boutique
+        </a>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('forum') }}" class="app-bottom-item {% if request.endpoint == 'forum' %}active{% endif %}">
+            <i class="fas fa-comments"></i>
+            Forum
+        </a>
+        {% endif %}
+        {% if not (current_user.is_authenticated and current_user.is_admin) %}
+        <a href="{{ url_for('cart') }}" class="app-bottom-item {% if request.endpoint == 'cart' %}active{% endif %}">
+            <i class="fas fa-cart-shopping"></i>
+            Panier
+        </a>
+        {% endif %}
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('client_profile') if not current_user.is_admin else url_for('admin_profile') }}" class="app-bottom-item">
+            <i class="fas fa-user"></i>
+            Profil
+        </a>
+        {% else %}
+        <a href="{{ url_for('client_login') }}" class="app-bottom-item {% if request.endpoint == 'client_login' %}active{% endif %}">
+            <i class="fas fa-right-to-bracket"></i>
+            Connexion
+        </a>
+        {% endif %}
+    </nav>
 
     <!-- JavaScript -->
     <script>

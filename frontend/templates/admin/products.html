@@ -69,6 +69,13 @@
                     <option value="false">Inactif</option>
                 </select>
             </div>
+            <div>
+                <span class="block text-sm font-medium text-gray-700 mb-1">Produit phare</span>
+                <label class="inline-flex items-center space-x-2 text-sm text-gray-600">
+                    <input type="checkbox" name="is_featured" class="text-purple-600 rounded">
+                    <span>Afficher dans "Produits phares"</span>
+                </label>
+            </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea name="description" rows="3" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
@@ -81,6 +88,11 @@
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">URLs d'images (une par ligne)</label>
                 <textarea name="image_urls" rows="3" placeholder="https://example.com/image.jpg" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Vidéos (max 3)</label>
+                <input type="file" name="videos" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" multiple class="w-full">
+                <p class="text-xs text-gray-500 mt-1">Formats acceptés: mp4, webm, mov, m4v.</p>
             </div>
             <div class="md:col-span-2 flex justify-end gap-3">
                 <button type="button" onclick="toggleProductForm()" class="px-4 py-2 border rounded-lg">Annuler</button>
@@ -99,6 +111,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catégorie</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prix</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phare</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
@@ -126,6 +139,13 @@
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ convert_price(product.price, from_currency=base_currency) }}</td>
                         <td class="px-6 py-4 text-sm text-gray-800">{{ product.quantity }}</td>
                         <td class="px-6 py-4">
+                            {% if product.is_featured %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Oui</span>
+                            {% else %}
+                            <span class="text-xs text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
                             {% if product.is_active %}
                             <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Actif</span>
                             {% else %}
@@ -149,7 +169,7 @@
                     </tr>
                     {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
                     <tr id="edit-{{ product.id }}" class="hidden bg-gray-50">
-                        <td colspan="6" class="px-6 py-4">
+                        <td colspan="7" class="px-6 py-4">
                             <form action="{{ url_for('admin_edit_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div>
@@ -179,6 +199,13 @@
                                         <option value="false" {% if not product.is_active %}selected{% endif %}>Inactif</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <span class="block text-xs font-semibold text-gray-600 mb-1">Produit phare</span>
+                                    <label class="inline-flex items-center space-x-2 text-xs text-gray-600">
+                                        <input type="checkbox" name="is_featured" class="text-purple-600 rounded" {% if product.is_featured %}checked{% endif %}>
+                                        <span>Afficher dans "Produits phares"</span>
+                                    </label>
+                                </div>
                                 <div class="md:col-span-3">
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">Description</label>
                                     <textarea name="description" rows="2" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">{{ product.description }}</textarea>
@@ -197,6 +224,19 @@
                                 <div class="md:col-span-3">
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">URLs d'images (une par ligne)</label>
                                     <textarea name="image_urls" rows="2" placeholder="https://example.com/image.jpg" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
+                                </div>
+                                <div>
+                                    <label class="inline-flex items-center space-x-2 text-xs font-semibold text-gray-600 mb-1">
+                                        <input type="checkbox" name="replace_videos" class="text-purple-600 rounded">
+                                        <span>Remplacer les vidéos existantes</span>
+                                    </label>
+                                    {% set video_count = product.videos.split('|')|length if product.videos else 0 %}
+                                    <p class="text-[11px] text-gray-500">Vidéos actuelles: {{ video_count }}</p>
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Vidéos (max 3)</label>
+                                    <input type="file" name="videos" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" multiple class="w-full text-xs">
+                                    <p class="text-[11px] text-gray-500 mt-1">Formats acceptés: mp4, webm, mov, m4v.</p>
                                 </div>
                                 <div class="md:col-span-3 flex justify-end gap-2">
                                     <button type="button" class="px-3 py-2 border rounded-lg text-gray-700" data-edit-toggle="edit-{{ product.id }}">Annuler</button>

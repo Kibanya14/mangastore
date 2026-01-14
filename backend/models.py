@@ -109,7 +109,9 @@ class Product(db.Model):
     compare_price = db.Column(db.Float)  # Prix barré
     quantity = db.Column(db.Integer, default=0)
     images = db.Column(db.Text)  # JSON des images
+    videos = db.Column(db.Text)  # URLs/paths des videos (pipe-delimited)
     is_active = db.Column(db.Boolean, default=True)
+    is_featured = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Clés étrangères

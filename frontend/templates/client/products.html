@@ -93,9 +93,9 @@
             </div>
 
             <!-- Grille Produits -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 app-stagger">
                 {% for product in products %}
-                <div class="bg-white rounded-xl shadow-md overflow-hidden hover-scale border border-gray-200">
+                <div class="bg-white rounded-2xl shadow-md overflow-hidden hover-scale border border-gray-200" style="--i: {{ loop.index }};">
                     <!-- Image Produit -->
                     <div class="h-48 bg-gray-200 relative overflow-hidden flex items-center justify-center">
                         {% set img = get_first_image_url(product) %}
@@ -126,9 +126,6 @@
                         
                         <div class="flex items-center justify-between mb-4">
                             <span class="text-xl font-bold text-purple-600">{{ convert_price(product.price, from_currency=price_currency) }}</span>
-                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                Stock: {{ product.quantity }}
-                            </span>
                         </div>
 
                         <!-- Actions -->

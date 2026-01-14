@@ -1078,10 +1078,20 @@ def create_app():
     
     @app.route('/')
     def index():
-        products = Product.query.filter_by(is_active=True).limit(8).all()
+        featured_products = (Product.query
+                             .filter_by(is_active=True, is_featured=True)
+                             .order_by(Product.created_at.desc())
+                             .limit(4)
+                             .all())
+        products = (Product.query
+                    .filter_by(is_active=True)
+                    .order_by(Product.created_at.desc())
+                    .limit(8)
+                    .all())
         categories = Category.query.filter_by(is_active=True).all()
         return render_template('client/index.html', 
-                             products=products, 
+                             products=products,
+                             featured_products=featured_products,
                              categories=categories)
 
     @app.route('/categories')
@@ -2072,6 +2082,8 @@ def create_app():
             category_id = int(request.form.get('category_id'))
             is_active_raw = request.form.get('is_active', 'true')
             is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
+            is_featured_raw = request.form.get('is_featured')
+            is_featured = str(is_featured_raw).lower() in ('on', 'true', '1', 'yes')
             
             if not all([name, price >= 0, quantity >= 0]):
                 flash('Veuillez remplir tous les champs correctement', 'error')
@@ -2089,7 +2101,8 @@ def create_app():
                 price=price,
                 quantity=quantity,
                 category_id=category_id,
-                is_active=is_active
+                is_active=is_active,
+                is_featured=is_featured
             )
 
             # Gérer les images: upload multiple et/ou URLs
@@ -2131,6 +2144,34 @@ def create_app():
                 # stocker en tant que chaîne séparée par |
                 product.images = '|'.join(image_entries)
 
+            # Gérer les videos (max 3)
+            video_entries = []
+            if 'videos' in request.files:
+                files = request.files.getlist('videos')
+                dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'products')
+                os.makedirs(dest_dir, exist_ok=True)
+                for f in files[:3]:
+                    if f and f.filename:
+                        filename = secure_filename(f.filename)
+                        namef, ext = os.path.splitext(filename)
+                        ext = ext.lower().lstrip('.')
+                        allowed = {'mp4', 'webm', 'mov', 'm4v'}
+                        if ext in allowed:
+                            uploaded_url = upload_media(f, 'uploads/products', logger=app.logger, resource_type='video')
+                            if uploaded_url:
+                                video_entries.append(uploaded_url)
+                                continue
+                            new_filename = f"vid_{int(datetime.now().timestamp())}_{secrets.token_hex(6)}.{ext}"
+                            path = os.path.join(dest_dir, new_filename)
+                            try:
+                                f.save(path)
+                                video_entries.append(f"uploads/products/{new_filename}")
+                            except Exception as e:
+                                app.logger.warning(f"Erreur sauvegarde video produit: {e}")
+
+            if video_entries:
+                product.videos = '|'.join(video_entries[:3])
+
             db.session.add(product)
             db.session.commit()
             
@@ -2162,6 +2203,8 @@ def create_app():
             product.category_id = int(request.form.get('category_id', product.category_id))
             is_active_raw = request.form.get('is_active', 'false')
             product.is_active = str(is_active_raw).lower() in ('on', 'true', '1', 'yes')
+            is_featured_raw = request.form.get('is_featured')
+            product.is_featured = str(is_featured_raw).lower() in ('on', 'true', '1', 'yes')
             replace_images = request.form.get('replace_images') == 'on'
             # Gérer images additionnelles (URLs ou upload)
             image_entries = []
@@ -2206,6 +2249,42 @@ def create_app():
             if replace_images or image_urls_raw or ('images' in request.files and request.files.get('images')):
                 # Si remplacement demandé ou nouvelles images fournies, on met à jour
                 product.images = '|'.join(image_entries) if image_entries else None
+
+            replace_videos = request.form.get('replace_videos') == 'on'
+            video_entries = []
+            if not replace_videos and product.videos:
+                try:
+                    existing_videos = [i for i in product.videos.split('|') if i]
+                    video_entries.extend(existing_videos)
+                except Exception:
+                    pass
+
+            if 'videos' in request.files:
+                files = request.files.getlist('videos')
+                dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'products')
+                os.makedirs(dest_dir, exist_ok=True)
+                for f in files:
+                    if f and f.filename:
+                        filename = secure_filename(f.filename)
+                        namef, ext = os.path.splitext(filename)
+                        ext = ext.lower().lstrip('.')
+                        allowed = {'mp4', 'webm', 'mov', 'm4v'}
+                        if ext in allowed:
+                            uploaded_url = upload_media(f, 'uploads/products', logger=app.logger, resource_type='video')
+                            if uploaded_url:
+                                video_entries.append(uploaded_url)
+                                continue
+                            new_filename = f"vid_{int(datetime.now().timestamp())}_{secrets.token_hex(6)}.{ext}"
+                            path = os.path.join(dest_dir, new_filename)
+                            try:
+                                f.save(path)
+                                video_entries.append(f"uploads/products/{new_filename}")
+                            except Exception as e:
+                                app.logger.warning(f"Erreur sauvegarde video produit: {e}")
+
+            if replace_videos or ('videos' in request.files and request.files.getlist('videos')):
+                trimmed = [v for v in video_entries if v][:3]
+                product.videos = '|'.join(trimmed) if trimmed else None
 
             db.session.commit()
             flash('Produit modifié avec succès', 'success')

@@ -30,6 +30,21 @@
             <div class="text-2xl font-semibold text-purple-700">{{ convert_price(product.price, from_currency=base_currency) }}</div>
             <p class="text-gray-700 leading-relaxed">{{ product.description or 'Pas de description disponible pour ce produit.' }}</p>
 
+            {% set videos = product.videos.split('|') if product.videos else [] %}
+            {% if videos %}
+            <div class="mt-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">Vidéos</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for video in videos[:3] %}
+                    {% set video_url = video if video.startswith('http') else media_url(video) %}
+                    <video controls preload="metadata" class="w-full rounded-xl bg-gray-100 border border-gray-200" playsinline>
+                        <source src="{{ video_url }}">
+                    </video>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             {% if product.quantity > 0 and not (current_user.is_authenticated and current_user.is_admin) %}
             <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="space-y-3" data-add-to-cart data-product-id="{{ product.id }}" data-product-name="{{ product.name }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
