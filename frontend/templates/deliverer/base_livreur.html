@@ -6,31 +6,20 @@
     <title>{% block title %}Manga Livreur{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --brand: #0f766e; --brand-dark: #0d5c54; }
-        .mobile-menu-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: 40;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
+        :root { --brand: #0f766e; --brand-dark: #0d5c54; --ink: #0f172a; }
+        body {
+            font-family: "Sora", "Segoe UI", sans-serif;
+            background: radial-gradient(1200px 600px at 10% -10%, #d1fae5 0%, transparent 60%),
+                        radial-gradient(800px 400px at 100% 0%, #bbf7d0 0%, transparent 55%),
+                        #f3faf6;
+            color: var(--ink);
         }
-        .mobile-menu-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        .mobile-menu {
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-        .mobile-menu.active {
-            transform: translateX(0);
-        }
+        h1, h2, h3, .app-title { font-family: "Syne", "Sora", sans-serif; }
+        body.mobile-nav-open { padding-bottom: 96px; }
         /* Footer fixe en bas */
         .footer-fixed {
             position: fixed;
@@ -41,6 +30,9 @@
             border-top: 1px solid #e5e7eb;
             z-index: 30;
         }
+        @media (max-width: 767px) {
+            .footer-fixed { display: none; }
+        }
         .nav-badge {
             background: #ef4444;
             color: #fff;
@@ -49,9 +41,60 @@
             border-radius: 999px;
             line-height: 1;
         }
+        .app-bottom-nav {
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+            border-radius: 999px;
+            padding: 10px 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            max-width: calc(100% - 24px);
+            z-index: 70;
+            backdrop-filter: blur(10px);
+            -webkit-overflow-scrolling: touch;
+        }
+        .app-bottom-nav::-webkit-scrollbar { height: 0; }
+        .app-bottom-nav { scrollbar-width: none; }
+        .app-bottom-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 14px;
+            transition: all 0.2s ease;
+            flex: 0 0 auto;
+        }
+        .app-bottom-item i { font-size: 16px; }
+        .app-bottom-item.active,
+        .app-bottom-item:hover {
+            background: #ecfdf3;
+            color: var(--brand-dark);
+        }
+        .app-bottom-select { min-width: 96px; }
+        .app-bottom-select-input {
+            width: 84px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            color: #475569;
+            text-align: center;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-gray-100" style="{% if request.endpoint != 'forum' %}padding-bottom: 88px;{% endif %}">
+<body class="min-h-screen flex flex-col">
     <!-- Navigation Livreur -->
     <nav class="bg-white shadow-lg sticky top-0 z-50 border-b">
         <div class="max-w-6xl mx-auto px-4">
@@ -151,66 +194,7 @@
             </div>
         </div>
 
-        <!-- Menu Mobile -->
-        <div id="mobileMenu" class="md:hidden hidden bg-white border-t">
-            <div class="px-4 py-3 space-y-3">
-                <a href="{{ url_for('deliverer_dashboard') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
-                    <i class="fas fa-tachometer-alt text-emerald-600"></i>
-                    <span>Tableau de bord</span>
-                </a>
-                
-                <a href="{{ url_for('deliverer_profile') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
-                    <i class="fas fa-user text-emerald-600"></i>
-                    <span>Profil</span>
-                </a>
-                
-                <a href="{{ url_for('deliverer_about') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
-                    <i class="fas fa-circle-info text-emerald-600"></i>
-                    <span>À propos</span>
-                </a>
-
-                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-emerald-600 py-2 flex items-center gap-2">
-                    <i class="fas fa-comments text-emerald-600"></i>
-                    <span>Forum</span>
-                    {% if forum_unread_count %}
-                    <span class="nav-badge">{{ forum_unread_count }}</span>
-                    {% endif %}
-                </a>
-
-                <!-- Devise mobile -->
-                <div class="py-3 border-t border-gray-200">
-                    <p class="text-xs font-medium text-gray-500 mb-2">Devise</p>
-                    <form action="{{ url_for('set_currency') }}" method="POST" class="bg-gray-50 rounded-lg p-3">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="flex items-center gap-2 mb-2">
-                            <i class="fas fa-coins text-yellow-500"></i>
-                            <select name="currency" class="flex-1 bg-transparent text-sm focus:outline-none cursor-pointer">
-                                {% for cur in available_currencies %}
-                                <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <button type="submit" class="w-full bg-emerald-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition flex items-center justify-center gap-2">
-                            <i class="fas fa-sync-alt"></i>
-                            Mettre à jour
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Déconnexion mobile -->
-                <div class="py-3 border-t border-gray-200">
-                    <a href="{{ url_for('deliverer_logout') }}" 
-                       class="flex items-center justify-center gap-2 w-full bg-red-50 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-100 transition">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Déconnexion</span>
-                    </a>
-                </div>
-            </div>
-        </div>
     </nav>
-
-    <!-- Overlay mobile menu -->
-    <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -235,39 +219,57 @@
         </div>
     </footer>
     {% endif %}
+
+    <nav id="mobileAppNav" class="app-bottom-nav md:hidden hidden" aria-label="Navigation principale">
+        <a href="{{ url_for('deliverer_dashboard') }}" class="app-bottom-item {% if request.endpoint == 'deliverer_dashboard' %}active{% endif %}">
+            <i class="fas fa-tachometer-alt"></i>
+            Tableau
+        </a>
+        <a href="{{ url_for('forum') }}" class="app-bottom-item {% if request.endpoint == 'forum' %}active{% endif %}">
+            <i class="fas fa-comments"></i>
+            Forum
+        </a>
+        <form action="{{ url_for('set_currency') }}" method="POST" class="app-bottom-item app-bottom-select">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <i class="fas fa-coins"></i>
+            <select name="currency" onchange="this.form.submit()" class="app-bottom-select-input" aria-label="Devise">
+                {% for cur in available_currencies %}
+                <option value="{{ cur }}" {% if cur == current_currency %}selected{% endif %}>{{ cur }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="{{ url_for('deliverer_profile') }}" class="app-bottom-item {% if request.endpoint == 'deliverer_profile' %}active{% endif %}">
+            <i class="fas fa-user"></i>
+            Profil
+        </a>
+        <a href="{{ url_for('deliverer_about') }}" class="app-bottom-item {% if request.endpoint == 'deliverer_about' %}active{% endif %}">
+            <i class="fas fa-circle-info"></i>
+            À propos
+        </a>
+        <a href="{{ url_for('deliverer_logout') }}" class="app-bottom-item">
+            <i class="fas fa-right-from-bracket"></i>
+            Déconnexion
+        </a>
+    </nav>
     <script>
         // Menu Mobile
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
-        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileNav = document.getElementById('mobileAppNav');
 
-        function toggleMobileMenu() {
-            const isOpen = !mobileMenu.classList.contains('hidden');
-            
-            if (isOpen) {
-                mobileMenu.classList.add('hidden');
-                mobileMenuOverlay.classList.remove('active');
-                document.body.style.overflow = '';
-            } else {
-                mobileMenu.classList.remove('hidden');
-                mobileMenuOverlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-        }
+        if (mobileMenuBtn && mobileNav) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('hidden');
+                document.body.classList.toggle('mobile-nav-open', !mobileNav.classList.contains('hidden'));
+            });
 
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            document.addEventListener('click', function(event) {
+                if (!mobileNav || mobileNav.classList.contains('hidden')) return;
+                if (!mobileNav.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileNav.classList.add('hidden');
+                    document.body.classList.remove('mobile-nav-open');
+                }
+            });
         }
-        if (mobileMenuOverlay) {
-            mobileMenuOverlay.addEventListener('click', toggleMobileMenu);
-        }
-
-        // Fermer menu mobile avec Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
-                toggleMobileMenu();
-            }
-        });
 
         // Géolocalisation pour les formulaires (boutons data-geo-btn)
         function initGeoWidgets() {
