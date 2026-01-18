@@ -44,14 +44,6 @@
         font-size: 12px;
         opacity: 0.8;
     }
-    .wa-chat-badge {
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 999px;
-        padding: 2px 10px;
-        font-size: 11px;
-        font-weight: 600;
-    }
     .wa-chat-window {
         flex: 1;
         overflow-y: auto;
@@ -223,11 +215,12 @@
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 8px;
-        display: flex;
+        display: none;
         flex-wrap: wrap;
         gap: 6px;
         max-width: 520px;
     }
+    .wa-emoji-picker.is-open { display: flex; }
     .wa-emoji-picker button {
         font-size: 20px;
         padding: 6px;
@@ -241,6 +234,24 @@
         align-items: center;
         flex-wrap: wrap;
         margin-top: 6px;
+    }
+    .wa-sticker-picker {
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 10px;
+        display: none;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        max-width: 520px;
+    }
+    .wa-sticker-picker.is-open { display: grid; }
+    .wa-sticker-picker button {
+        font-size: 26px;
+        padding: 8px;
+        border-radius: 14px;
+        background: #f8fafc;
     }
     .wa-sidebar {
         background: #fff;
@@ -306,7 +317,6 @@
                             <div class="wa-chat-sub">{{ online_count }} en ligne</div>
                         </div>
                     </div>
-                    <span class="wa-chat-badge">WhatsApp style</span>
                 </header>
 
                 <div id="chat-window" class="wa-chat-window">
@@ -422,10 +432,16 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div id="emoji-picker" class="wa-emoji-picker hidden">
+                    <div id="emoji-picker" class="wa-emoji-picker hidden" hidden aria-hidden="true">
                         {% set emojis = ['😀','😁','😂','🤣','😊','😍','😘','😎','😇','🤩','🤔','😢','😡','👍','🙏','👏','🔥','✨','🎉','🎯','❤️','🤝','🚀'] %}
                         {% for e in emojis %}
                         <button type="button" data-emoji="{{ e }}">{{ e }}</button>
+                        {% endfor %}
+                    </div>
+                    <div id="sticker-picker" class="wa-sticker-picker hidden" hidden aria-hidden="true">
+                        {% set stickers = ['🎉','😂','😍','😎','😇','🥳','🔥','💯','👏','🙏','🚀','🎯','✨','🤝','👍'] %}
+                        {% for s in stickers %}
+                        <button type="button" data-sticker="{{ s }}">{{ s }}</button>
                         {% endfor %}
                     </div>
                     <div class="wa-hints">
@@ -512,6 +528,7 @@
     const stickerBtn = document.getElementById('sticker-btn');
     const emojiBtn = document.getElementById('emoji-btn');
     const emojiPicker = document.getElementById('emoji-picker');
+    const stickerPicker = document.getElementById('sticker-picker');
     let mediaRecorder = null;
     let chunks = [];
     let recordTimeout = null;
@@ -567,11 +584,37 @@
         });
     }
 
-    // Sticker/GIF: declencher le picker de fichier (meme input)
-    if (stickerBtn && attachInput) {
+    function setPickerVisible(el, show){
+        if (!el) return;
+        el.classList.toggle('hidden', !show);
+        el.classList.toggle('is-open', show);
+        el.hidden = !show;
+        el.setAttribute('aria-hidden', show ? 'false' : 'true');
+    }
+
+    function closePickers(except){
+        if (emojiPicker && emojiPicker !== except) setPickerVisible(emojiPicker, false);
+        if (stickerPicker && stickerPicker !== except) setPickerVisible(stickerPicker, false);
+    }
+
+    if (stickerBtn && stickerPicker) {
         stickerBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            attachInput.click();
+            const isHidden = stickerPicker.classList.contains('hidden');
+            closePickers(isHidden ? stickerPicker : null);
+            setPickerVisible(stickerPicker, isHidden);
+        });
+        stickerPicker.querySelectorAll('[data-sticker]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const textarea = document.querySelector('#chat-form textarea[name="content"]');
+                if (!textarea) return;
+                const sticker = btn.getAttribute('data-sticker');
+                const start = textarea.selectionStart || textarea.value.length;
+                const end = textarea.selectionEnd || textarea.value.length;
+                textarea.value = textarea.value.slice(0, start) + sticker + textarea.value.slice(end);
+                textarea.focus();
+                setPickerVisible(stickerPicker, false);
+            });
         });
     }
 
@@ -579,7 +622,9 @@
     if (emojiBtn && emojiPicker) {
         emojiBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            emojiPicker.classList.toggle('hidden');
+            const isHidden = emojiPicker.classList.contains('hidden');
+            closePickers(isHidden ? emojiPicker : null);
+            setPickerVisible(emojiPicker, isHidden);
         });
         emojiPicker.querySelectorAll('[data-emoji]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -590,10 +635,23 @@
                 const end = textarea.selectionEnd || textarea.value.length;
                 textarea.value = textarea.value.slice(0, start) + emoji + textarea.value.slice(end);
                 textarea.focus();
-                emojiPicker.classList.add('hidden');
+                setPickerVisible(emojiPicker, false);
             });
         });
     }
+
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+        const clickedEmoji = emojiPicker && emojiPicker.contains(target);
+        const clickedSticker = stickerPicker && stickerPicker.contains(target);
+        const clickedEmojiBtn = emojiBtn && emojiBtn.contains(target);
+        const clickedStickerBtn = stickerBtn && stickerBtn.contains(target);
+        if (!clickedEmoji && !clickedSticker && !clickedEmojiBtn && !clickedStickerBtn) {
+            closePickers(null);
+        }
+    });
+
+    closePickers(null);
 
     // Copier message
     document.querySelectorAll('.copy-btn').forEach(btn => {

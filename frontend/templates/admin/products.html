@@ -20,6 +20,15 @@
                 </button>
             </form>
             {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
+            <form action="{{ url_for('admin_import_products') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="file" name="file" accept=".csv,.xlsx" required class="px-2 py-1 border border-gray-300 rounded-lg text-sm">
+                <button type="submit" class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm">
+                    <i class="fas fa-file-import"></i><span>Importer</span>
+                </button>
+            </form>
+            {% endif %}
+            {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
             <a href="{{ url_for('admin_export_products_pdf') }}" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 currency-prompt-download">
                 <i class="fas fa-file-pdf"></i><span>Exporter PDF</span>
             </a>
@@ -99,6 +108,9 @@
                 <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Enregistrer</button>
             </div>
         </form>
+    </div>
+    <div class="text-xs text-gray-500 mt-2">
+        Import CSV/XLSX (colonnes: name, price, category ou category_id, description, quantity, compare_price, is_active, is_featured).
     </div>
 
     <!-- Liste -->

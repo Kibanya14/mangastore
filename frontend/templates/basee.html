@@ -168,10 +168,12 @@
                 </a>
             </nav>
             <!-- Legal / footer info in sidebar -->
+            {% if request.endpoint != 'forum' %}
             <div class="p-4 border-t border-gray-700 text-xs text-gray-300 leading-relaxed break-words whitespace-normal">
                 <p>© 2025 Manga Store Administration.</p>
                 <p>Propulsé par Esperdigi. Tous droits réservés.</p>
             </div>
+            {% endif %}
         </div>
 
         <!-- Contenu Principal -->

@@ -20,4 +20,5 @@ psycopg2-binary==2.9.9
 supabase==2.7.0
 # supabase 2.7.0 requiert storage3 < 0.8.0
 storage3==0.7.7
+openpyxl==3.1.2
 setuptools>=70.0.0

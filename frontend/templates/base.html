@@ -83,8 +83,10 @@
                 min-height: 100vh;
             }
         }
-        .app-main { padding-bottom: 96px; }
-        @media (min-width: 768px) { .app-main { padding-bottom: 0; } }
+        .app-main { padding-bottom: 0; }
+        @media (max-width: 767px) {
+            body.mobile-nav-open .app-main { padding-bottom: 96px; }
+        }
         .app-nav {
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
@@ -197,9 +199,15 @@
             padding: 10px 14px;
             display: flex;
             gap: 12px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            max-width: calc(100% - 24px);
             z-index: 70;
             backdrop-filter: blur(10px);
+            -webkit-overflow-scrolling: touch;
         }
+        .app-bottom-nav::-webkit-scrollbar { height: 0; }
+        .app-bottom-nav { scrollbar-width: none; }
         .app-bottom-item {
             display: flex;
             flex-direction: column;
@@ -211,6 +219,7 @@
             padding: 6px 10px;
             border-radius: 14px;
             transition: all 0.2s ease;
+            flex: 0 0 auto;
         }
         .app-bottom-item i { font-size: 16px; }
         .app-bottom-item.active,
@@ -396,61 +405,6 @@
             </div>
         </div>
 
-        <!-- Menu Mobile -->
-        <div id="mobileMenu" class="md:hidden hidden bg-white border-t">
-            <div class="px-4 py-3 space-y-3">
-                <a href="{{ url_for('index') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-home mr-2"></i>Accueil
-                </a>
-                <a href="{{ url_for('products') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-book mr-2"></i>Produits
-                </a>
-                <a href="{{ url_for('about') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-circle-info mr-2"></i>À propos
-                </a>
-                {% if current_user.is_authenticated %}
-                <a href="{{ url_for('forum') }}" class="block text-gray-600 hover:text-purple-600 py-2 flex items-center gap-2">
-                    <i class="fas fa-comments"></i><span>Forum</span>
-                    {% if forum_unread_count %}
-                    <span class="nav-badge">{{ forum_unread_count }}</span>
-                    {% endif %}
-                </a>
-                {% endif %}
-                {% if not (current_user.is_authenticated and current_user.is_admin) %}
-                <a href="{{ url_for('cart') }}" class="block text-gray-600 hover:text-purple-600 py-2 relative">
-                    <i class="fas fa-shopping-cart mr-2"></i>Panier
-                    <span class="cart-badge absolute -top-1 left-16 {% if cart_count <= 0 %}hidden{% endif %}" data-cart-count aria-label="{{ cart_count }} article(s) dans le panier">{{ cart_count }}</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated %}
-                    {% if current_user.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                        <i class="fas fa-tools mr-2"></i>Administration
-                    </a>
-                    <a href="{{ url_for('admin_profile') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                        <i class="fas fa-user-shield mr-2"></i>Profil Admin
-                    </a>
-                    <a href="{{ url_for('admin_logout') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
-                    </a>
-                    {% else %}
-                    <a href="{{ url_for('client_profile') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                        <i class="fas fa-user mr-2"></i>Mon Profil
-                    </a>
-                    <a href="{{ url_for('client_logout') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
-                    </a>
-                    {% endif %}
-                {% else %}
-                <a href="{{ url_for('client_login') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-sign-in-alt mr-2"></i>Connexion
-                </a>
-                <a href="{{ url_for('client_register') }}" class="block text-gray-600 hover:text-purple-600 py-2">
-                    <i class="fas fa-user-plus mr-2"></i>S'inscrire
-                </a>
-                {% endif %}
-            </div>
-        </div>
     </nav>
 
     <!-- Contenu Principal -->
@@ -459,6 +413,7 @@
     </main>
 
     <!-- Footer -->
+    {% if request.endpoint != 'forum' %}
     <footer class="bg-gray-800 text-white mt-16">
         {% set contact_email = shop_settings.shop_email if shop_settings and shop_settings.shop_email else 'mangastorerdc@gmail.com' %}
         {% set contact_phone = shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000' %}
@@ -525,6 +480,7 @@
             </div>
         </div>
     </footer>
+    {% endif %}
 
     </div>
 
@@ -535,7 +491,7 @@
         <span class="hidden sm:inline">WhatsApp</span>
     </a>
 
-    <nav class="app-bottom-nav md:hidden" aria-label="Navigation principale">
+    <nav id="mobileAppNav" class="app-bottom-nav md:hidden hidden" aria-label="Navigation principale">
         <a href="{{ url_for('index') }}" class="app-bottom-item {% if request.endpoint == 'index' %}active{% endif %}">
             <i class="fas fa-house"></i>
             Accueil
@@ -551,15 +507,20 @@
         </a>
         {% endif %}
         {% if not (current_user.is_authenticated and current_user.is_admin) %}
-        <a href="{{ url_for('cart') }}" class="app-bottom-item {% if request.endpoint == 'cart' %}active{% endif %}">
+        <a href="{{ url_for('cart') }}" class="app-bottom-item {% if request.endpoint == 'cart' %}active{% endif %} relative">
             <i class="fas fa-cart-shopping"></i>
             Panier
+            <span class="cart-badge absolute -top-1 -right-1 {% if cart_count <= 0 %}hidden{% endif %}" data-cart-count aria-label="{{ cart_count }} article(s) dans le panier">{{ cart_count }}</span>
         </a>
         {% endif %}
         {% if current_user.is_authenticated %}
         <a href="{{ url_for('client_profile') if not current_user.is_admin else url_for('admin_profile') }}" class="app-bottom-item">
             <i class="fas fa-user"></i>
             Profil
+        </a>
+        <a href="{{ url_for('client_logout') if not current_user.is_admin else url_for('admin_logout') }}" class="app-bottom-item">
+            <i class="fas fa-right-from-bracket"></i>
+            Déconnexion
         </a>
         {% else %}
         <a href="{{ url_for('client_login') }}" class="app-bottom-item {% if request.endpoint == 'client_login' %}active{% endif %}">
@@ -572,20 +533,23 @@
     <!-- JavaScript -->
     <script>
         // Menu Mobile
-        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('hidden');
-        });
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileNav = document.getElementById('mobileAppNav');
+        if (mobileMenuBtn && mobileNav) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileNav.classList.toggle('hidden');
+                document.body.classList.toggle('mobile-nav-open', !mobileNav.classList.contains('hidden'));
+            });
 
-        // Fermer le menu mobile en cliquant à l'extérieur
-        document.addEventListener('click', function(event) {
-            const menu = document.getElementById('mobileMenu');
-            const btn = document.getElementById('mobileMenuBtn');
-            
-            if (!menu.contains(event.target) && !btn.contains(event.target)) {
-                menu.classList.add('hidden');
-            }
-        });
+            // Fermer le menu mobile en cliquant à l'extérieur
+            document.addEventListener('click', function(event) {
+                if (!mobileNav || mobileNav.classList.contains('hidden')) return;
+                if (!mobileNav.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileNav.classList.add('hidden');
+                    document.body.classList.remove('mobile-nav-open');
+                }
+            });
+        }
 
         // Messages flash
         setTimeout(() => {

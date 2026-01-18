@@ -17,8 +17,11 @@ from logging.handlers import RotatingFileHandler
 from flask_wtf import CSRFProtect
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime, timedelta
+import csv
 import json
+import re
 import secrets
+from io import TextIOWrapper
 from werkzeug.utils import secure_filename
 from functools import wraps
 from sqlalchemy import create_engine, or_, text
@@ -29,6 +32,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from urllib.parse import urljoin
 from collections import defaultdict
 from types import SimpleNamespace
+from openpyxl import load_workbook
 
 # Patch standard eventlet après avoir configuré ENV
 eventlet.monkey_patch()
@@ -760,6 +764,116 @@ def create_app():
                 return f(*args, **kwargs)
             return wrapped
         return decorator
+
+    def _normalize_key(key: str) -> str:
+        value = str(key or '').strip().lower()
+        value = re.sub(r'[^a-z0-9]+', '_', value)
+        return value.strip('_')
+
+    def _normalize_row(row: dict) -> dict:
+        normalized = {}
+        for key, value in (row or {}).items():
+            if key is None:
+                continue
+            norm = _normalize_key(key)
+            if not norm:
+                continue
+            normalized[norm] = value
+        return normalized
+
+    def _row_get(row: dict, keys: tuple[str, ...]):
+        for key in keys:
+            value = row.get(key)
+            if value is None:
+                continue
+            if isinstance(value, str) and not value.strip():
+                continue
+            return value
+        return None
+
+    def _clean_number(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        text = str(value).strip()
+        if not text:
+            return None
+        text = text.replace(' ', '').replace(',', '.')
+        text = re.sub(r'[^0-9\\.-]', '', text)
+        if not text or text in {'.', '-', '-.'}:
+            return None
+        try:
+            return float(text)
+        except Exception:
+            return None
+
+    def _parse_int(value, default=0):
+        number = _clean_number(value)
+        if number is None:
+            return default
+        return int(number)
+
+    def _parse_float(value, default=None):
+        number = _clean_number(value)
+        if number is None:
+            return default
+        return float(number)
+
+    def _parse_bool(value, default=False):
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in ('1', 'true', 'yes', 'y', 'oui', 'on', 'active', 'actif'):
+            return True
+        if text in ('0', 'false', 'no', 'non', 'off', 'inactive', 'inactif'):
+            return False
+        return default
+
+    def _read_rows_from_file(file_storage):
+        if not file_storage or not file_storage.filename:
+            raise ValueError("Aucun fichier fourni.")
+        filename = secure_filename(file_storage.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == '.csv':
+            text_stream = TextIOWrapper(file_storage.stream, encoding='utf-8-sig')
+            sample = text_stream.read(2048)
+            text_stream.seek(0)
+            try:
+                dialect = csv.Sniffer().sniff(sample)
+            except Exception:
+                dialect = csv.excel
+            reader = csv.DictReader(text_stream, dialect=dialect)
+            rows = []
+            for row in reader:
+                if not row:
+                    continue
+                if any(v is not None and str(v).strip() != '' for v in row.values()):
+                    rows.append(row)
+            return rows
+        if ext in ('.xlsx', '.xlsm', '.xltx', '.xltm'):
+            workbook = load_workbook(file_storage, read_only=True, data_only=True)
+            sheet = workbook.active
+            rows = list(sheet.iter_rows(values_only=True))
+            if not rows:
+                return []
+            headers = [str(h).strip() if h is not None else '' for h in rows[0]]
+            data = []
+            for row in rows[1:]:
+                if not row:
+                    continue
+                row_map = {}
+                for idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    value = row[idx] if idx < len(row) else None
+                    row_map[header] = value
+                if any(v is not None and str(v).strip() != '' for v in row_map.values()):
+                    data.append(row_map)
+            return data
+        raise ValueError("Format non supporte. Utilisez CSV ou XLSX.")
 
     def deliverer_required(f):
         """Protection pour les routes livreur."""
@@ -2069,6 +2183,120 @@ def create_app():
         products = query.order_by(Product.created_at.desc()).all()
         categories = Category.query.all()
         return render_template('admin/products.html', products=products, categories=categories, search_term=search_term)
+
+    @app.route('/admin/products/import', methods=['POST'])
+    @login_required
+    @require_permission('manage_products')
+    def admin_import_products():
+        file = request.files.get('file')
+        try:
+            rows = _read_rows_from_file(file)
+            if not rows:
+                flash('Fichier vide ou invalide.', 'error')
+                return redirect(url_for('admin_products'))
+
+            field_map = {
+                'name': ('name', 'product', 'product_name', 'nom', 'nom_produit'),
+                'description': ('description', 'desc'),
+                'price': ('price', 'prix'),
+                'compare_price': ('compare_price', 'compare', 'old_price', 'prix_barre'),
+                'quantity': ('quantity', 'qty', 'stock', 'quantite'),
+                'category': ('category', 'category_name', 'categorie'),
+                'category_id': ('category_id', 'categorie_id'),
+                'is_active': ('is_active', 'active', 'status'),
+                'is_featured': ('is_featured', 'featured', 'phare'),
+            }
+
+            created = updated = skipped = 0
+            errors = []
+
+            def _has_value(value):
+                return value is not None and (not isinstance(value, str) or value.strip() != '')
+
+            for idx, raw in enumerate(rows, start=2):
+                row = _normalize_row(raw)
+                name_raw = _row_get(row, field_map['name'])
+                if not _has_value(name_raw):
+                    skipped += 1
+                    errors.append(f"Ligne {idx}: nom manquant.")
+                    continue
+                name = str(name_raw).strip()
+
+                price_raw = _row_get(row, field_map['price'])
+                price = _parse_float(price_raw, default=None)
+                if price is None:
+                    skipped += 1
+                    errors.append(f"Ligne {idx}: prix invalide ou manquant.")
+                    continue
+
+                category = None
+                category_id_raw = _row_get(row, field_map['category_id'])
+                if _has_value(category_id_raw):
+                    category_id = _parse_int(category_id_raw, default=None)
+                    if category_id is not None:
+                        category = Category.query.get(category_id)
+                    if not category:
+                        skipped += 1
+                        errors.append(f"Ligne {idx}: categorie_id introuvable.")
+                        continue
+                else:
+                    category_name_raw = _row_get(row, field_map['category'])
+                    if _has_value(category_name_raw):
+                        category_name = str(category_name_raw).strip()
+                        category = Category.query.filter(db.func.lower(Category.name) == category_name.lower()).first()
+                        if not category:
+                            category = Category(name=category_name, is_active=True)
+                            db.session.add(category)
+                            db.session.flush()
+                    else:
+                        skipped += 1
+                        errors.append(f"Ligne {idx}: categorie manquante.")
+                        continue
+
+                product = Product.query.filter(db.func.lower(Product.name) == name.lower()).first()
+                if product:
+                    updated += 1
+                else:
+                    product = Product(name=name, category_id=category.id)
+                    db.session.add(product)
+                    created += 1
+
+                product.category_id = category.id
+                product.price = price
+
+                desc_raw = _row_get(row, field_map['description'])
+                if _has_value(desc_raw):
+                    product.description = str(desc_raw).strip()
+
+                compare_raw = _row_get(row, field_map['compare_price'])
+                if _has_value(compare_raw):
+                    product.compare_price = _parse_float(compare_raw, default=None)
+
+                qty_raw = _row_get(row, field_map['quantity'])
+                if _has_value(qty_raw):
+                    product.quantity = _parse_int(qty_raw, default=0)
+                elif not product.id:
+                    product.quantity = 0
+
+                active_raw = _row_get(row, field_map['is_active'])
+                product.is_active = _parse_bool(active_raw, default=True)
+
+                featured_raw = _row_get(row, field_map['is_featured'])
+                product.is_featured = _parse_bool(featured_raw, default=False)
+
+            db.session.commit()
+            summary = f"Import produits: {created} cree(s), {updated} maj, {skipped} ignore(s)."
+            if errors:
+                preview = " | ".join(errors[:5])
+                summary += f" Erreurs: {preview}"
+            flash(summary, 'success' if created or updated else 'error')
+        except ValueError as exc:
+            flash(str(exc), 'error')
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error(f"Erreur import produits: {exc}")
+            flash("Erreur lors de l'import des produits.", 'error')
+        return redirect(url_for('admin_products'))
     
     @app.route('/admin/products/add', methods=['POST'])
     @login_required
@@ -2551,6 +2779,72 @@ def create_app():
     def admin_categories():
         categories = Category.query.all()
         return render_template('admin/categories.html', categories=categories, category_icons=CATEGORY_ICON_CHOICES)
+
+    @app.route('/admin/categories/import', methods=['POST'])
+    @login_required
+    @require_permission('manage_categories')
+    def admin_import_categories():
+        file = request.files.get('file')
+        try:
+            rows = _read_rows_from_file(file)
+            if not rows:
+                flash('Fichier vide ou invalide.', 'error')
+                return redirect(url_for('admin_categories'))
+
+            field_map = {
+                'name': ('name', 'category', 'category_name', 'categorie', 'nom'),
+                'description': ('description', 'desc'),
+                'icon': ('icon', 'icone', 'icon_class'),
+                'is_active': ('is_active', 'active', 'status'),
+            }
+
+            created = updated = skipped = 0
+            errors = []
+
+            def _has_value(value):
+                return value is not None and (not isinstance(value, str) or value.strip() != '')
+
+            for idx, raw in enumerate(rows, start=2):
+                row = _normalize_row(raw)
+                name_raw = _row_get(row, field_map['name'])
+                if not _has_value(name_raw):
+                    skipped += 1
+                    errors.append(f"Ligne {idx}: nom manquant.")
+                    continue
+                name = str(name_raw).strip()
+
+                category = Category.query.filter(db.func.lower(Category.name) == name.lower()).first()
+                if category:
+                    updated += 1
+                else:
+                    category = Category(name=name)
+                    db.session.add(category)
+                    created += 1
+
+                desc_raw = _row_get(row, field_map['description'])
+                if _has_value(desc_raw):
+                    category.description = str(desc_raw).strip()
+
+                icon_raw = _row_get(row, field_map['icon'])
+                if _has_value(icon_raw):
+                    category.icon = str(icon_raw).strip()
+
+                active_raw = _row_get(row, field_map['is_active'])
+                category.is_active = _parse_bool(active_raw, default=True)
+
+            db.session.commit()
+            summary = f"Import categories: {created} creee(s), {updated} maj, {skipped} ignoree(s)."
+            if errors:
+                preview = " | ".join(errors[:5])
+                summary += f" Erreurs: {preview}"
+            flash(summary, 'success' if created or updated else 'error')
+        except ValueError as exc:
+            flash(str(exc), 'error')
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error(f"Erreur import categories: {exc}")
+            flash("Erreur lors de l'import des categories.", 'error')
+        return redirect(url_for('admin_categories'))
 
     @app.route('/admin/tasks')
     @login_required

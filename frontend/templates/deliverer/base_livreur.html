@@ -51,7 +51,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-gray-100" style="padding-bottom: 88px;">
+<body class="min-h-screen flex flex-col bg-gray-100" style="{% if request.endpoint != 'forum' %}padding-bottom: 88px;{% endif %}">
     <!-- Navigation Livreur -->
     <nav class="bg-white shadow-lg sticky top-0 z-50 border-b">
         <div class="max-w-6xl mx-auto px-4">
@@ -228,11 +228,13 @@
         {% block content %}{% endblock %}
     </main>
 
+    {% if request.endpoint != 'forum' %}
     <footer class="footer-fixed">
         <div class="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-gray-500">
             <p>© 2025 Manga Store Livreur. Propulsé par Esperdigi. Tous droits réservés.</p>
         </div>
     </footer>
+    {% endif %}
     <script>
         // Menu Mobile
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
