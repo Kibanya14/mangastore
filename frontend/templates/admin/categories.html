@@ -3,6 +3,7 @@
 {% block title %}Gestion des Catégories - Admin{% endblock %}
 
 {% block header_title %}Gestion des Catégories{% endblock %}
+{% set can_manage_categories = current_user.has_permission('manage_categories') or current_user.is_super_admin %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-6">
@@ -10,23 +11,22 @@
 <div class="flex justify-between items-center mb-6">
     <h2 class="text-xl font-semibold text-gray-800">Liste des Catégories</h2>
     <div class="flex space-x-3">
-        {% if current_user.has_permission('manage_categories') or current_user.is_super_admin %}
-        <form action="{{ url_for('admin_import_categories') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="file" name="file" accept=".csv,.xlsx" required class="px-2 py-1 border border-gray-300 rounded-lg text-sm">
-            <button type="submit" class="bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition flex items-center space-x-2 text-sm">
-                <i class="fas fa-file-import"></i>
-                <span>Importer</span>
-            </button>
-        </form>
-        {% endif %}
-        {% if current_user.has_permission('manage_categories') or current_user.is_super_admin %}
+        {% if can_manage_categories %}
+        <button type="submit" form="bulkDeleteCategoriesForm"
+                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center space-x-2">
+            <i class="fas fa-trash"></i>
+            <span>Supprimer sélection</span>
+        </button>
         <button onclick="toggleCategoryForm()" 
                 class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2">
             <i class="fas fa-plus"></i>
             <span>Nouvelle Catégorie</span>
         </button>
         {% else %}
+        <button data-feature="Suppression groupée" type="button" class="inactive-feature bg-red-100 text-red-500 px-4 py-2 rounded-lg opacity-70 cursor-not-allowed inline-flex items-center space-x-2" title="Accès restreint">
+            <i class="fas fa-trash"></i>
+            <span>Supprimer sélection</span>
+        </button>
         <button data-feature="Nouvelle Catégorie" type="button" class="inactive-feature bg-gray-200 text-gray-600 px-4 py-2 rounded-lg opacity-70 cursor-not-allowed inline-flex items-center space-x-2" title="Accès restreint">
             <i class="fas fa-plus"></i>
             <span>Nouvelle Catégorie</span>
@@ -35,7 +35,11 @@
         {% endif %}
     </div>
 </div>
-<p class="text-xs text-gray-500 mt-2">Import CSV/XLSX (colonnes: name, description, icon, is_active).</p>
+{% if can_manage_categories %}
+<form id="bulkDeleteCategoriesForm" action="{{ url_for('admin_bulk_delete_categories') }}" method="POST" class="hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+{% endif %}
 
 <!-- Formulaire Ajout Catégorie -->
 <div id="categoryForm" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
@@ -90,6 +94,11 @@
         <table class="w-full">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {% if can_manage_categories %}
+                        <input type="checkbox" id="selectAllCategories" class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                        {% endif %}
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Catégorie
                     </th>
@@ -110,6 +119,11 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for category in categories %}
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        {% if can_manage_categories %}
+                        <input type="checkbox" name="category_ids" value="{{ category.id }}" form="bulkDeleteCategoriesForm" class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="h-10 w-10 flex-shrink-0">
@@ -142,7 +156,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
-                            {% if current_user.has_permission('manage_categories') or current_user.is_super_admin %}
+                            {% if can_manage_categories %}
                             <button type="button"
                                     class="text-blue-600 hover:text-blue-900"
                                     title="Modifier"
@@ -239,6 +253,45 @@
     function toggleCategoryForm() {
         const form = document.getElementById('categoryForm');
         form.classList.toggle('hidden');
+    }
+
+    const bulkForm = document.getElementById('bulkDeleteCategoriesForm');
+    const selectAll = document.getElementById('selectAllCategories');
+    const checkboxes = Array.from(document.querySelectorAll('input[name="category_ids"]'));
+
+    const updateSelectAll = () => {
+        if (!selectAll) return;
+        if (!checkboxes.length) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            return;
+        }
+        const checkedCount = checkboxes.filter(cb => cb.checked).length;
+        selectAll.checked = checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    };
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateSelectAll();
+        });
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
+    updateSelectAll();
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', (e) => {
+            const selected = checkboxes.filter(cb => cb.checked);
+            if (!selected.length) {
+                e.preventDefault();
+                alert('Aucune catégorie sélectionnée.');
+                return;
+            }
+            if (!confirm(`Supprimer ${selected.length} catégorie(s) sélectionnée(s) ?`)) {
+                e.preventDefault();
+            }
+        });
     }
 
     // Auto-suppression des messages flash

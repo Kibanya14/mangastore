@@ -2,6 +2,7 @@
 
 {% block title %}Produits - Admin{% endblock %}
 {% block header_title %}Catalogue produits{% endblock %}
+{% set can_manage_products = current_user.has_permission('manage_products') or current_user.is_super_admin %}
 
 {% block content %}
 <div class="space-y-6">
@@ -19,28 +20,29 @@
                     <i class="fas fa-search"></i>
                 </button>
             </form>
-            {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
-            <form action="{{ url_for('admin_import_products') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="file" name="file" accept=".csv,.xlsx" required class="px-2 py-1 border border-gray-300 rounded-lg text-sm">
-                <button type="submit" class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm">
-                    <i class="fas fa-file-import"></i><span>Importer</span>
-                </button>
-            </form>
-            {% endif %}
-            {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
+            {% if can_manage_products %}
             <a href="{{ url_for('admin_export_products_pdf') }}" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 currency-prompt-download">
                 <i class="fas fa-file-pdf"></i><span>Exporter PDF</span>
             </a>
+            <button type="submit" form="bulkDeleteProductsForm" class="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 flex items-center gap-2">
+                <i class="fas fa-trash"></i><span>Supprimer sélection</span>
+            </button>
             <button onclick="toggleProductForm()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
                 <i class="fas fa-plus"></i><span>Ajouter</span>
             </button>
             {% else %}
             <span data-feature="Exporter PDF" class="inactive-feature px-4 py-2 bg-red-600 text-white rounded-lg opacity-70 cursor-not-allowed">Exporter PDF</span>
+            <span data-feature="Suppression groupée" class="inactive-feature px-4 py-2 bg-red-100 text-red-500 rounded-lg opacity-70 cursor-not-allowed">Supprimer sélection</span>
             <span data-feature="Nouveau Produit" class="inactive-feature px-4 py-2 bg-gray-200 text-gray-600 rounded-lg opacity-70 cursor-not-allowed">Ajouter</span>
             {% endif %}
         </div>
     </div>
+
+    {% if can_manage_products %}
+    <form id="bulkDeleteProductsForm" action="{{ url_for('admin_bulk_delete_products') }}" method="POST" class="hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </form>
+    {% endif %}
 
     <!-- Formulaire -->
     <div id="productForm" class="bg-white rounded-lg shadow p-6 hidden">
@@ -109,16 +111,17 @@
             </div>
         </form>
     </div>
-    <div class="text-xs text-gray-500 mt-2">
-        Import CSV/XLSX (colonnes: name, price, category ou category_id, description, quantity, compare_price, is_active, is_featured).
-    </div>
-
     <!-- Liste -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            {% if can_manage_products %}
+                            <input type="checkbox" id="selectAllProducts" class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                            {% endif %}
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catégorie</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prix</th>
@@ -131,6 +134,11 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for product in products %}
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4">
+                            {% if can_manage_products %}
+                            <input type="checkbox" name="product_ids" value="{{ product.id }}" form="bulkDeleteProductsForm" class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                            {% endif %}
+                        </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 {% set img = get_first_image_url(product) %}
@@ -166,7 +174,7 @@
                         </td>
                         <td class="px-6 py-4 text-sm">
                             <div class="flex items-center gap-2">
-                                {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
+                                {% if can_manage_products %}
                                 <button type="button" class="text-blue-600 hover:text-blue-800" title="Modifier" data-edit-toggle="edit-{{ product.id }}">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -179,9 +187,9 @@
                             </div>
                         </td>
                     </tr>
-                    {% if current_user.has_permission('manage_products') or current_user.is_super_admin %}
+                    {% if can_manage_products %}
                     <tr id="edit-{{ product.id }}" class="hidden bg-gray-50">
-                        <td colspan="7" class="px-6 py-4">
+                        <td colspan="8" class="px-6 py-4">
                             <form action="{{ url_for('admin_edit_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div>
@@ -276,6 +284,45 @@ function toggleProductForm(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const bulkForm = document.getElementById('bulkDeleteProductsForm');
+    const selectAll = document.getElementById('selectAllProducts');
+    const checkboxes = Array.from(document.querySelectorAll('input[name="product_ids"]'));
+
+    const updateSelectAll = () => {
+        if (!selectAll) return;
+        if (!checkboxes.length) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            return;
+        }
+        const checkedCount = checkboxes.filter(cb => cb.checked).length;
+        selectAll.checked = checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    };
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateSelectAll();
+        });
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
+    updateSelectAll();
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', (e) => {
+            const selected = checkboxes.filter(cb => cb.checked);
+            if (!selected.length) {
+                e.preventDefault();
+                alert('Aucun produit sélectionné.');
+                return;
+            }
+            if (!confirm(`Supprimer ${selected.length} produit(s) sélectionné(s) ?`)) {
+                e.preventDefault();
+            }
+        });
+    }
+
     const currencies = {{ available_currencies|tojson|safe }};
     const defaultCurrency = "{{ (current_currency or base_currency)|upper }}";
     const normalize = (val) => (val || '').trim().toUpperCase();

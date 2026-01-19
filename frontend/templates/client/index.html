@@ -113,7 +113,11 @@
                 </div>
                 {% endif %}
                 <h3 class="font-semibold text-gray-800 mb-2">{{ category.name }}</h3>
-                <p class="text-sm text-gray-600">{{ category.description[:50] }}{% if category.description and category.description|length > 50 %}...{% endif %}</p>
+                {% if category.description %}
+                <p class="text-sm text-gray-600">{{ category.description[:50] }}{% if category.description|length > 50 %}...{% endif %}</p>
+                {% else %}
+                <p class="text-sm text-gray-500">Aucune description.</p>
+                {% endif %}
             </a>
             {% endfor %}
         </div>

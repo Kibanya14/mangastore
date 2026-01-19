@@ -21,7 +21,7 @@ import csv
 import json
 import re
 import secrets
-from io import TextIOWrapper
+from io import StringIO, TextIOWrapper
 from werkzeug.utils import secure_filename
 from functools import wraps
 from sqlalchemy import create_engine, or_, text
@@ -33,6 +33,8 @@ from urllib.parse import urljoin
 from collections import defaultdict
 from types import SimpleNamespace
 from openpyxl import load_workbook
+from PyPDF2 import PdfReader
+from docx import Document
 
 # Patch standard eventlet après avoir configuré ENV
 eventlet.monkey_patch()
@@ -837,6 +839,32 @@ def create_app():
             raise ValueError("Aucun fichier fourni.")
         filename = secure_filename(file_storage.filename)
         ext = os.path.splitext(filename)[1].lower()
+        def _rows_from_lines(lines):
+            if not lines:
+                return []
+            sample = "\n".join(lines[:5])
+            try:
+                dialect = csv.Sniffer().sniff(sample, delimiters=";,|\\t")
+            except Exception:
+                dialect = csv.excel
+            reader = csv.reader(lines, dialect=dialect)
+            rows = list(reader)
+            if not rows:
+                return []
+            headers = [str(h).strip() if h is not None else '' for h in rows[0]]
+            data = []
+            for row in rows[1:]:
+                if not row:
+                    continue
+                row_map = {}
+                for idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    value = row[idx] if idx < len(row) else None
+                    row_map[header] = value
+                if any(v is not None and str(v).strip() != '' for v in row_map.values()):
+                    data.append(row_map)
+            return data
         if ext == '.csv':
             text_stream = TextIOWrapper(file_storage.stream, encoding='utf-8-sig')
             sample = text_stream.read(2048)
@@ -853,6 +881,11 @@ def create_app():
                 if any(v is not None and str(v).strip() != '' for v in row.values()):
                     rows.append(row)
             return rows
+        if ext in ('.txt', '.tsv'):
+            file_storage.stream.seek(0)
+            text = file_storage.stream.read().decode('utf-8', errors='ignore')
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            return _rows_from_lines(lines)
         if ext in ('.xlsx', '.xlsm', '.xltx', '.xltm'):
             workbook = load_workbook(file_storage, read_only=True, data_only=True)
             sheet = workbook.active
@@ -873,7 +906,44 @@ def create_app():
                 if any(v is not None and str(v).strip() != '' for v in row_map.values()):
                     data.append(row_map)
             return data
-        raise ValueError("Format non supporte. Utilisez CSV ou XLSX.")
+        if ext == '.docx':
+            file_storage.stream.seek(0)
+            doc = Document(file_storage)
+            data = []
+            if doc.tables:
+                for table in doc.tables:
+                    if not table.rows:
+                        continue
+                    headers = [cell.text.strip() for cell in table.rows[0].cells]
+                    for row in table.rows[1:]:
+                        row_map = {}
+                        for idx, cell in enumerate(row.cells):
+                            if idx >= len(headers):
+                                continue
+                            header = headers[idx]
+                            if not header:
+                                continue
+                            row_map[header] = cell.text.strip()
+                        if any(v is not None and str(v).strip() != '' for v in row_map.values()):
+                            data.append(row_map)
+            if not data:
+                lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                return _rows_from_lines(lines)
+            return data
+        if ext == '.pdf':
+            file_storage.stream.seek(0)
+            reader = PdfReader(file_storage)
+            text_parts = []
+            for page in reader.pages:
+                content = page.extract_text() or ''
+                if content.strip():
+                    text_parts.append(content)
+            text = "\n".join(text_parts).strip()
+            if not text:
+                return []
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            return _rows_from_lines(lines)
+        raise ValueError("Format non supporte. Utilisez CSV, XLSX, DOCX, PDF, TXT ou TSV.")
 
     def deliverer_required(f):
         """Protection pour les routes livreur."""
@@ -2184,6 +2254,159 @@ def create_app():
         categories = Category.query.all()
         return render_template('admin/products.html', products=products, categories=categories, search_term=search_term)
 
+    @app.route('/admin/catalog/import', methods=['POST'])
+    @login_required
+    @require_permission('manage_products')
+    def admin_import_catalog():
+        if not (current_user.is_super_admin or current_user.has_permission('manage_categories')):
+            flash('Accès refusé — permission manage_categories requise', 'error')
+            return redirect(request.referrer or url_for('admin_products'))
+
+        file = request.files.get('file')
+        try:
+            rows = _read_rows_from_file(file)
+            if not rows:
+                flash('Fichier vide ou invalide.', 'error')
+                return redirect(request.referrer or url_for('admin_products'))
+
+            field_map = {
+                'name': ('name', 'product', 'product_name', 'nom', 'nom_produit'),
+                'description': ('description', 'desc'),
+                'price': ('price', 'prix'),
+                'compare_price': ('compare_price', 'compare', 'old_price', 'prix_barre'),
+                'quantity': ('quantity', 'qty', 'stock', 'quantite'),
+                'category': ('category', 'category_name', 'categorie'),
+                'category_id': ('category_id', 'categorie_id'),
+                'is_active': ('is_active', 'active', 'status'),
+                'is_featured': ('is_featured', 'featured', 'phare'),
+            }
+
+            normalized_rows = [_normalize_row(r) for r in rows]
+            category_cache = {}
+            created_categories = 0
+
+            for raw in normalized_rows:
+                cat_name_raw = _row_get(raw, field_map['category'])
+                if not cat_name_raw:
+                    continue
+                cat_name = str(cat_name_raw).strip()
+                if not cat_name:
+                    continue
+                key = cat_name.lower()
+                if key in category_cache:
+                    continue
+                category = Category.query.filter(db.func.lower(Category.name) == key).first()
+                if not category:
+                    category = Category(name=cat_name, is_active=True)
+                    db.session.add(category)
+                    db.session.flush()
+                    created_categories += 1
+                category_cache[key] = category
+
+            created = updated = skipped = duplicates = 0
+            errors = []
+            seen_names = set()
+
+            def _has_value(value):
+                return value is not None and (not isinstance(value, str) or value.strip() != '')
+
+            for idx, raw in enumerate(normalized_rows, start=2):
+                name_raw = _row_get(raw, field_map['name'])
+                if not _has_value(name_raw):
+                    skipped += 1
+                    errors.append(f"Ligne {idx}: nom manquant.")
+                    continue
+                name = str(name_raw).strip()
+                name_key = name.lower()
+                if name_key in seen_names:
+                    duplicates += 1
+                    continue
+                seen_names.add(name_key)
+
+                price_raw = _row_get(raw, field_map['price'])
+                price = _parse_float(price_raw, default=None)
+                if price is None:
+                    skipped += 1
+                    errors.append(f"Ligne {idx}: prix invalide ou manquant.")
+                    continue
+
+                category = None
+                category_id_raw = _row_get(raw, field_map['category_id'])
+                if _has_value(category_id_raw):
+                    category_id = _parse_int(category_id_raw, default=None)
+                    if category_id is not None:
+                        category = Category.query.get(category_id)
+                    if not category:
+                        skipped += 1
+                        errors.append(f"Ligne {idx}: categorie_id introuvable.")
+                        continue
+                else:
+                    category_name_raw = _row_get(raw, field_map['category'])
+                    if _has_value(category_name_raw):
+                        category_name = str(category_name_raw).strip()
+                        category = category_cache.get(category_name.lower())
+                        if not category:
+                            category = Category.query.filter(db.func.lower(Category.name) == category_name.lower()).first()
+                            if not category:
+                                category = Category(name=category_name, is_active=True)
+                                db.session.add(category)
+                                db.session.flush()
+                                created_categories += 1
+                            category_cache[category_name.lower()] = category
+                    else:
+                        skipped += 1
+                        errors.append(f"Ligne {idx}: categorie manquante.")
+                        continue
+
+                product = Product.query.filter(db.func.lower(Product.name) == name_key).first()
+                if product:
+                    updated += 1
+                else:
+                    product = Product(name=name, category_id=category.id)
+                    db.session.add(product)
+                    created += 1
+
+                product.category_id = category.id
+                product.price = price
+
+                desc_raw = _row_get(raw, field_map['description'])
+                if _has_value(desc_raw):
+                    product.description = str(desc_raw).strip()
+
+                compare_raw = _row_get(raw, field_map['compare_price'])
+                if _has_value(compare_raw):
+                    product.compare_price = _parse_float(compare_raw, default=None)
+
+                qty_raw = _row_get(raw, field_map['quantity'])
+                if _has_value(qty_raw):
+                    product.quantity = _parse_int(qty_raw, default=0)
+                elif not product.id:
+                    product.quantity = 0
+
+                active_raw = _row_get(raw, field_map['is_active'])
+                product.is_active = _parse_bool(active_raw, default=True)
+
+                featured_raw = _row_get(raw, field_map['is_featured'])
+                product.is_featured = _parse_bool(featured_raw, default=False)
+
+            db.session.commit()
+            summary = (
+                f"Import catalogue: {created_categories} categorie(s) creee(s), "
+                f"{created} produit(s) cree(s), {updated} maj, "
+                f"{duplicates} doublon(s) ignore(s), {skipped} ignore(s)."
+            )
+            if errors:
+                preview = " | ".join(errors[:5])
+                summary += f" Erreurs: {preview}"
+            flash(summary, 'success' if created or updated or created_categories else 'error')
+        except ValueError as exc:
+            flash(str(exc), 'error')
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error(f"Erreur import catalogue: {exc}")
+            flash("Erreur lors de l'import du catalogue.", 'error')
+        return redirect(request.referrer or url_for('admin_products'))
+
     @app.route('/admin/products/import', methods=['POST'])
     @login_required
     @require_permission('manage_products')
@@ -2542,6 +2765,32 @@ def create_app():
             flash('Erreur lors de la suppression du produit', 'error')
             print(f"Erreur suppression produit: {e}")
         
+        return redirect(url_for('admin_products'))
+
+    @app.route('/admin/products/bulk-delete', methods=['POST'])
+    @login_required
+    @require_permission('manage_products')
+    def admin_bulk_delete_products():
+        raw_ids = request.form.getlist('product_ids')
+        ids = [int(i) for i in raw_ids if str(i).isdigit()]
+        if not ids:
+            flash('Aucun produit sélectionné.', 'error')
+            return redirect(url_for('admin_products'))
+
+        locked_ids = {row[0] for row in db.session.query(OrderItem.product_id)
+                      .filter(OrderItem.product_id.in_(ids)).distinct().all()}
+        products = Product.query.filter(Product.id.in_(ids)).all()
+
+        deleted = skipped = 0
+        for product in products:
+            if product.id in locked_ids:
+                skipped += 1
+                continue
+            db.session.delete(product)
+            deleted += 1
+
+        db.session.commit()
+        flash(f"Suppression groupée: {deleted} supprimé(s), {skipped} ignoré(s) (liés à des commandes).", 'success')
         return redirect(url_for('admin_products'))
     
     @app.route('/admin/orders')
@@ -2940,6 +3189,32 @@ def create_app():
             flash('Erreur lors de la suppression de la catégorie', 'error')
             print(f"Erreur suppression catégorie: {e}")
         
+        return redirect(url_for('admin_categories'))
+
+    @app.route('/admin/categories/bulk-delete', methods=['POST'])
+    @login_required
+    @require_permission('manage_categories')
+    def admin_bulk_delete_categories():
+        raw_ids = request.form.getlist('category_ids')
+        ids = [int(i) for i in raw_ids if str(i).isdigit()]
+        if not ids:
+            flash('Aucune catégorie sélectionnée.', 'error')
+            return redirect(url_for('admin_categories'))
+
+        locked_ids = {row[0] for row in db.session.query(Product.category_id)
+                      .filter(Product.category_id.in_(ids)).distinct().all()}
+        categories = Category.query.filter(Category.id.in_(ids)).all()
+
+        deleted = skipped = 0
+        for category in categories:
+            if category.id in locked_ids:
+                skipped += 1
+                continue
+            db.session.delete(category)
+            deleted += 1
+
+        db.session.commit()
+        flash(f"Suppression groupée: {deleted} supprimée(s), {skipped} ignorée(s) (catégories non vides).", 'success')
         return redirect(url_for('admin_categories'))
     
     @app.route('/admin/settings', methods=['GET', 'POST'])

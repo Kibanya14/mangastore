@@ -177,6 +177,7 @@
         </div>
 
         <!-- Contenu Principal -->
+        {% set can_import_catalog = current_user.is_super_admin or (current_user.has_permission('manage_products') and current_user.has_permission('manage_categories')) %}
         <div class="main-content flex-1 flex flex-col overflow-hidden">
             <!-- En-tête -->
             <header class="bg-white card-surface shadow-sm border-b border-gray-200">
@@ -194,6 +195,17 @@
                         </form>
                     </div>
                     <div class="flex items-center space-x-3">
+                        {% if can_import_catalog %}
+                        <form action="{{ url_for('admin_import_catalog') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="file" name="file" accept=".csv,.xlsx,.xlsm,.xltx,.xltm,.txt,.tsv,.pdf,.docx" required class="text-xs text-gray-600">
+                            <button type="submit" class="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs hover:bg-emerald-700" title="Colonnes: name, price, category/category_id, description, quantity, compare_price, is_active, is_featured">
+                                Importer catalogue
+                            </button>
+                        </form>
+                        {% else %}
+                        <span data-feature="Importer catalogue" class="inactive-feature inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-xs border border-gray-200">Importer catalogue</span>
+                        {% endif %}
                         <span class="text-gray-600">Bonjour, {{ current_user.first_name }}!</span>
                         <div class="relative group">
                             <button type="button" class="h-10 w-10 rounded-full border border-purple-200 overflow-hidden flex items-center justify-center bg-gray-50">
