@@ -189,6 +189,8 @@ class ShopSettings(db.Model):
     facebook_url = db.Column(db.String(255))
     whatsapp_number = db.Column(db.String(30))
     whatsapp_group_url = db.Column(db.String(255))
+    telegram_username = db.Column(db.String(60))
+    telegram_url = db.Column(db.String(255))
     currency = db.Column(db.String(10), default='USD')
     tax_rate = db.Column(db.Float, default=0.0)
     shipping_cost = db.Column(db.Float, default=0.0)

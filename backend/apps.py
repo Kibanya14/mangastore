@@ -2757,7 +2757,7 @@ def create_app():
             if order_items:
                 flash('Impossible de supprimer ce produit car il est associé à des commandes', 'error')
                 return redirect(url_for('admin_products'))
-                
+            CartItem.query.filter_by(product_id=product_id).delete(synchronize_session=False)
             db.session.delete(product)
             db.session.commit()
             flash('Produit supprimé avec succès', 'success')
@@ -2779,16 +2779,13 @@ def create_app():
 
         locked_ids = {row[0] for row in db.session.query(OrderItem.product_id)
                       .filter(OrderItem.product_id.in_(ids)).distinct().all()}
-        products = Product.query.filter(Product.id.in_(ids)).all()
+        deletable_ids = [pid for pid in ids if pid not in locked_ids]
+        deleted = len(deletable_ids)
+        skipped = len(locked_ids)
 
-        deleted = skipped = 0
-        for product in products:
-            if product.id in locked_ids:
-                skipped += 1
-                continue
-            db.session.delete(product)
-            deleted += 1
-
+        if deletable_ids:
+            CartItem.query.filter(CartItem.product_id.in_(deletable_ids)).delete(synchronize_session=False)
+            Product.query.filter(Product.id.in_(deletable_ids)).delete(synchronize_session=False)
         db.session.commit()
         flash(f"Suppression groupée: {deleted} supprimé(s), {skipped} ignoré(s) (liés à des commandes).", 'success')
         return redirect(url_for('admin_products'))
@@ -3020,6 +3017,25 @@ def create_app():
         else:
             flash('Statut invalide', 'error')
         
+        return redirect(url_for('admin_orders'))
+
+    @app.route('/admin/order/<int:order_id>/delete', methods=['POST'])
+    @login_required
+    @require_permission('manage_orders')
+    def admin_delete_order(order_id):
+        order = Order.query.get_or_404(order_id)
+        if order.status != 'cancelled':
+            flash("Seules les commandes annulées peuvent être supprimées.", 'error')
+            return redirect(request.referrer or url_for('admin_orders'))
+        try:
+            db.session.delete(order)
+            db.session.commit()
+            record_activity(f"Suppression commande '{order.order_number}'", actor=current_user)
+            flash("Commande supprimée avec succès.", 'success')
+        except Exception as exc:
+            db.session.rollback()
+            print(f"Erreur suppression commande: {exc}")
+            flash("Erreur lors de la suppression de la commande.", 'error')
         return redirect(url_for('admin_orders'))
     
     @app.route('/admin/categories')
@@ -3260,6 +3276,8 @@ def create_app():
                 settings.facebook_url = request.form.get('facebook_url')
                 settings.whatsapp_number = request.form.get('whatsapp_number')
                 settings.whatsapp_group_url = request.form.get('whatsapp_group_url')
+                settings.telegram_username = request.form.get('telegram_username')
+                settings.telegram_url = request.form.get('telegram_url')
                 settings.currency = new_currency
                 settings.tax_rate = float(request.form.get('tax_rate', 0))
                 settings.shipping_cost = shipping_cost_input

@@ -170,6 +170,28 @@
         @media (max-width: 768px) {
             .whatsapp-btn { bottom: 96px; }
         }
+        .telegram-btn {
+            position: fixed;
+            bottom: 78px;
+            right: 18px;
+            background: #229ed9;
+            color: white;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px rgba(34, 158, 217, 0.35);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-weight: 700;
+            z-index: 59;
+        }
+        .telegram-btn:hover {
+            background: #1b8cc3;
+            transform: translateY(-1px);
+        }
+        @media (max-width: 768px) {
+            .telegram-btn { bottom: 156px; }
+        }
         .whatsapp-pulse {
             animation: pulse 1.8s ease-in-out infinite;
         }
@@ -431,6 +453,8 @@
         {% set contact_address = shop_settings.shop_address if shop_settings and shop_settings.shop_address else 'Kinshasa, RDC' %}
         {% set facebook_url = shop_settings.facebook_url if shop_settings and shop_settings.facebook_url else None %}
         {% set whatsapp_group_url = shop_settings.whatsapp_group_url if shop_settings and shop_settings.whatsapp_group_url else None %}
+        {% set telegram_url = shop_settings.telegram_url if shop_settings and shop_settings.telegram_url else None %}
+        {% set telegram_username = shop_settings.telegram_username if shop_settings and shop_settings.telegram_username else None %}
         <div class="max-w-7xl mx-auto px-4 py-10 space-y-6">
             <div class="grid gap-6 md:grid-cols-4">
                 <div class="space-y-2">
@@ -476,6 +500,11 @@
                             <i class="fas fa-users text-lg"></i><span>Groupe WhatsApp</span>
                         </a>
                         {% endif %}
+                        {% if telegram_url or telegram_username %}
+                        <a href="{{ telegram_url if telegram_url else ('https://t.me/' + (telegram_username|replace('@',''))) }}" target="_blank" rel="noopener" class="hover:text-white transition flex items-center gap-2">
+                            <i class="fab fa-telegram text-xl"></i><span>Telegram</span>
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="space-y-3">
@@ -497,6 +526,15 @@
 
     {% set raw_wa_phone = (shop_settings.whatsapp_number if shop_settings and shop_settings.whatsapp_number else (shop_settings.shop_phone if shop_settings and shop_settings.shop_phone else '+243000000000')) %}
     {% set wa_phone = raw_wa_phone|replace(' ', '')|replace('+', '') %}
+    {% set telegram_url = shop_settings.telegram_url if shop_settings and shop_settings.telegram_url else None %}
+    {% set telegram_username = shop_settings.telegram_username if shop_settings and shop_settings.telegram_username else None %}
+    {% set telegram_link = telegram_url if telegram_url else ('https://t.me/' + (telegram_username|replace('@','')) if telegram_username else None) %}
+    {% if telegram_link %}
+    <a href="{{ telegram_link }}" class="telegram-btn" target="_blank" rel="noopener" aria-label="Ouvrir Telegram">
+        <i class="fab fa-telegram text-2xl"></i>
+        <span class="hidden sm:inline">Telegram</span>
+    </a>
+    {% endif %}
     <a href="https://wa.me/{{ wa_phone }}" class="whatsapp-btn whatsapp-pulse" target="_blank" rel="noopener" aria-label="Ouvrir WhatsApp">
         <i class="fab fa-whatsapp text-2xl"></i>
         <span class="hidden sm:inline">WhatsApp</span>

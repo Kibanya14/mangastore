@@ -2,6 +2,7 @@
 
 {% block title %}Commande {{ order.order_number }}{% endblock %}
 {% block header_title %}Commande {{ order.order_number }}{% endblock %}
+{% set can_manage_orders = current_user.has_permission('manage_orders') or current_user.is_super_admin %}
 
 {% block content %}
 <div class="space-y-6">
@@ -17,6 +18,14 @@
             <a href="{{ url_for('admin_download_invoice', order_id=order.id) }}" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 currency-prompt-download">
                 <i class="fas fa-file-pdf"></i> Facture
             </a>
+            {% if can_manage_orders and order.status == 'cancelled' %}
+            <form action="{{ url_for('admin_delete_order', order_id=order.id) }}" method="POST" onsubmit="return confirm('Supprimer définitivement cette commande annulée ?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-3 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 flex items-center gap-2">
+                    <i class="fas fa-trash"></i> Supprimer
+                </button>
+            </form>
+            {% endif %}
             <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Retour</a>
         </div>
     </div>
